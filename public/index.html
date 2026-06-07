@@ -8,7 +8,6 @@
   <style>
     :root {
       --bg: #0d0d14;
-      --surface: #13131f;
       --card: #1a1a2e;
       --accent: #a78bfa;
       --accent2: #f472b6;
@@ -18,7 +17,6 @@
       --live: #f87171;
       --twitch: #9146ff;
       --youtube: #ff4444;
-      --tiktok: #00f2ea;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -26,7 +24,6 @@
       color: var(--text);
       font-family: 'Outfit', 'Zen Kaku Gothic New', sans-serif;
       min-height: 100vh;
-      overflow-x: hidden;
     }
     body::before {
       content: '';
@@ -36,15 +33,6 @@
       background: radial-gradient(circle, rgba(167,139,250,0.08) 0%, transparent 70%);
       pointer-events: none; z-index: 0;
     }
-    body::after {
-      content: '';
-      position: fixed;
-      bottom: -200px; left: -200px;
-      width: 500px; height: 500px;
-      background: radial-gradient(circle, rgba(244,114,182,0.06) 0%, transparent 70%);
-      pointer-events: none; z-index: 0;
-    }
-
     header {
       position: sticky; top: 0; z-index: 100;
       background: rgba(13,13,20,0.85);
@@ -61,26 +49,16 @@
       background: linear-gradient(135deg, var(--accent), var(--accent2));
       -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
     }
-    nav { display: flex; gap: 4px; }
-    nav button {
-      background: none; border: none; color: var(--muted);
-      font-family: inherit; font-size: 13px;
-      padding: 6px 14px; border-radius: 20px; cursor: pointer; transition: all 0.2s;
-    }
-    nav button.active, nav button:hover { background: rgba(167,139,250,0.12); color: var(--accent); }
-
     main {
       position: relative; z-index: 1;
       max-width: 900px; margin: 0 auto;
       padding: 24px 16px 80px;
     }
-
     .profile-banner {
       background: linear-gradient(135deg, rgba(167,139,250,0.1), rgba(244,114,182,0.08));
       border: 1px solid rgba(167,139,250,0.2);
       border-radius: 20px; padding: 24px; margin-bottom: 24px;
       display: flex; align-items: center; gap: 20px;
-      animation: fadeIn 0.5s ease;
     }
     .avatar {
       width: 72px; height: 72px; border-radius: 50%;
@@ -96,19 +74,15 @@
       background: rgba(167,139,250,0.15); border: 1px solid rgba(167,139,250,0.3);
       border-radius: 20px; padding: 3px 10px; font-size: 12px; color: var(--accent); margin-top: 8px;
     }
-
     .live-banner {
       background: linear-gradient(135deg, rgba(248,113,113,0.15), rgba(145,70,255,0.1));
       border: 1px solid rgba(248,113,113,0.3);
       border-radius: 16px; padding: 16px 20px; margin-bottom: 24px;
       display: flex; align-items: center; gap: 16px;
-      cursor: pointer; transition: all 0.3s;
-      animation: fadeIn 0.5s ease 0.1s both;
-      text-decoration: none; color: inherit;
+      text-decoration: none; color: inherit; transition: all 0.3s;
     }
     .live-banner:hover {
       border-color: rgba(248,113,113,0.5);
-      background: linear-gradient(135deg, rgba(248,113,113,0.2), rgba(145,70,255,0.15));
       transform: translateY(-1px);
     }
     .live-banner.hidden { display: none; }
@@ -121,43 +95,33 @@
       0%, 100% { opacity: 1; transform: scale(1); }
       50% { opacity: 0.7; transform: scale(1.3); }
     }
-    .live-info { flex: 1; }
-    .live-label { font-size: 11px; color: var(--live); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 2px; }
-    .live-title { font-size: 15px; font-weight: 600; }
+    .live-info { flex: 1; min-width: 0; }
+    .live-label { font-size: 11px; color: var(--live); font-weight: 700; letter-spacing: 1px; margin-bottom: 2px; }
+    .live-title { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .live-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
-
-    .platform-badge { padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; }
+    .platform-badge { padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; white-space: nowrap; }
     .platform-badge.twitch { background: rgba(145,70,255,0.25); color: var(--twitch); }
     .platform-badge.youtube { background: rgba(255,68,68,0.2); color: var(--youtube); }
-    .platform-badge.tiktok { background: rgba(0,242,234,0.15); color: var(--tiktok); }
-
     .watch-btn {
       background: var(--live); color: white; border: none;
       border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 700;
-      cursor: pointer; font-family: inherit; transition: all 0.2s; white-space: nowrap;
+      cursor: pointer; font-family: inherit; white-space: nowrap;
     }
-    .watch-btn:hover { background: #ef4444; transform: scale(1.03); }
-
     .section-title {
       font-family: 'Zen Kaku Gothic New', sans-serif; font-weight: 700;
-      font-size: 14px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase;
+      font-size: 14px; color: var(--muted); letter-spacing: 1px;
       margin-bottom: 12px; margin-top: 28px;
       display: flex; align-items: center; gap: 8px;
     }
     .section-title::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.06); }
-
     .timeline { display: flex; flex-direction: column; gap: 8px; }
-    .date-label { font-size: 12px; color: var(--muted); padding: 4px 0; font-weight: 600; }
-
     .stream-card {
       background: var(--card); border: 1px solid rgba(255,255,255,0.06);
       border-radius: 14px; padding: 14px 16px;
       display: flex; align-items: center; gap: 14px;
-      cursor: pointer; transition: all 0.2s;
-      animation: fadeIn 0.4s ease both;
-      text-decoration: none; color: inherit;
+      text-decoration: none; color: inherit; transition: all 0.2s;
     }
-    .stream-card:hover { border-color: rgba(167,139,250,0.25); background: rgba(26,26,46,0.9); transform: translateX(4px); }
+    .stream-card:hover { border-color: rgba(167,139,250,0.25); transform: translateX(4px); }
     .stream-thumb {
       width: 52px; height: 52px; border-radius: 10px;
       display: flex; align-items: center; justify-content: center;
@@ -165,30 +129,14 @@
     }
     .stream-thumb.twitch { background: rgba(145,70,255,0.15); }
     .stream-thumb.youtube { background: rgba(255,68,68,0.12); }
-    .stream-thumb.tiktok { background: rgba(0,242,234,0.1); }
     .stream-info { flex: 1; min-width: 0; }
     .stream-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
     .stream-meta { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
-    .stream-duration { background: rgba(255,255,255,0.06); border-radius: 4px; padding: 2px 6px; font-size: 11px; color: var(--muted); }
-
-    .loading {
-      text-align: center; padding: 40px; color: var(--muted); font-size: 14px;
-    }
-    .loading::after { content: ''; animation: dots 1.5s infinite; }
-    @keyframes dots {
-      0% { content: ''; } 33% { content: '.'; } 66% { content: '..'; } 100% { content: '...'; }
-    }
-
-    .error-msg {
-      background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.2);
-      border-radius: 10px; padding: 12px 16px; font-size: 13px; color: var(--live);
-    }
-
+    .stream-duration { background: rgba(255,255,255,0.06); border-radius: 4px; padding: 2px 6px; font-size: 11px; }
+    .loading { text-align: center; padding: 30px; color: var(--muted); font-size: 14px; }
+    .empty-msg { text-align: center; padding: 20px; color: var(--muted); font-size: 13px; }
     .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-    .stat-card {
-      background: var(--card); border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 14px; padding: 16px; text-align: center;
-    }
+    .stat-card { background: var(--card); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 16px; text-align: center; }
     .stat-value {
       font-size: 24px; font-weight: 700;
       background: linear-gradient(135deg, var(--accent), var(--accent2));
@@ -196,7 +144,6 @@
       margin-bottom: 4px;
     }
     .stat-label { font-size: 11px; color: var(--muted); }
-
     .bottom-nav {
       position: fixed; bottom: 0; left: 0; right: 0;
       background: rgba(13,13,20,0.95); backdrop-filter: blur(20px);
@@ -205,14 +152,12 @@
     }
     .nav-item {
       display: flex; flex-direction: column; align-items: center; gap: 3px;
-      cursor: pointer; padding: 4px 20px; border-radius: 10px; transition: all 0.2s;
       border: none; background: none; color: var(--muted); font-family: inherit;
+      cursor: pointer; padding: 4px 20px; border-radius: 10px;
     }
     .nav-item.active { color: var(--accent); }
-    .nav-item:hover { color: var(--text); }
     .nav-icon { font-size: 20px; }
     .nav-label { font-size: 10px; }
-
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(8px); }
       to { opacity: 1; transform: translateY(0); }
@@ -220,15 +165,11 @@
   </style>
 </head>
 <body>
-
 <header>
   <div class="logo">
     <span class="logo-icon">🐈⚡</span>
     <span class="logo-text">たろ民サポートアプリ</span>
   </div>
-  <nav>
-    <button class="active">ホーム</button>
-  </nav>
 </header>
 
 <main>
@@ -241,12 +182,11 @@
     </div>
   </div>
 
-  <!-- ライブバナー（JSで制御） -->
   <a id="liveBanner" class="live-banner hidden" href="#" target="_blank" rel="noopener">
     <div class="live-dot"></div>
     <div class="live-info">
       <div class="live-label">🔴 配信中</div>
-      <div class="live-title" id="liveTitle">読み込み中...</div>
+      <div class="live-title" id="liveTitle"></div>
       <div class="live-meta" id="liveMeta"></div>
     </div>
     <span class="platform-badge" id="livePlatform"></span>
@@ -254,22 +194,16 @@
   </a>
 
   <div class="section-title">📋 最近の配信</div>
-  <div class="timeline" id="timeline">
-    <div class="loading">配信情報を読み込み中</div>
-  </div>
+  <div class="timeline" id="streamTimeline"><div class="loading">読み込み中...</div></div>
 
   <div class="section-title">▶ YouTubeの動画</div>
-  <div class="timeline" id="ytVideos">
-    <div class="loading">読み込み中</div>
-  </div>
+  <div class="timeline" id="ytTimeline"><div class="loading">読み込み中...</div></div>
 
   <div class="section-title">🎮 Twitchのクリップ</div>
-  <div class="timeline" id="twClips">
-    <div class="loading">読み込み中</div>
-  </div>
+  <div class="timeline" id="twClipTimeline"><div class="loading">読み込み中...</div></div>
 
   <div class="section-title">📊 今月の統計</div>
-  <div class="stats-grid" id="statsGrid">
+  <div class="stats-grid">
     <div class="stat-card"><div class="stat-value" id="statCount">-</div><div class="stat-label">今月の配信数</div></div>
     <div class="stat-card"><div class="stat-value" id="statPlatforms">-</div><div class="stat-label">配信プラットフォーム</div></div>
     <div class="stat-card"><div class="stat-value" id="statLatest">-</div><div class="stat-label">最終配信</div></div>
@@ -282,64 +216,41 @@
 </div>
 
 <script>
-  // 日付フォーマット
   function formatDate(dateStr) {
+    if (!dateStr) return '';
     const d = new Date(dateStr);
     const now = new Date();
-    const diff = now - d;
-    const days = Math.floor(diff / 86400000);
-    if (days === 0) return '今日';
-    if (days === 1) return '昨日';
+    const diff = Math.floor((now - d) / 86400000);
+    if (diff === 0) return '今日';
+    if (diff === 1) return '昨日';
     return `${d.getMonth()+1}/${d.getDate()}`;
   }
 
-  // ISO8601 duration → 時間表示
-  function parseDuration(iso) {
+  function parseYTDuration(iso) {
     if (!iso) return '';
     const m = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
     if (!m) return '';
     const h = parseInt(m[1]||0), min = parseInt(m[2]||0);
-    if (h > 0) return `${h}h ${min}m`;
-    return `${min}m`;
+    return h > 0 ? `${h}h ${min}m` : min > 0 ? `${min}m` : '';
   }
 
-  // タイムラインにカードを追加
-  function addCard(container, item) {
-    const card = document.createElement('a');
-    card.className = `stream-card ${item.platform}`;
-    card.href = item.url;
-    card.target = '_blank';
-    card.rel = 'noopener';
-
-    const icons = { twitch: '🎮', youtube: '▶', tiktok: '🎵' };
-    const dateStr = formatDate(item.date);
-
-    card.innerHTML = `
-      <div class="stream-thumb ${item.platform}">${icons[item.platform] || '🎥'}</div>
-      <div class="stream-info">
-        <div class="stream-title">${item.title}</div>
-        <div class="stream-meta">
-          <span class="platform-badge ${item.platform}">${item.platform === 'twitch' ? 'Twitch' : item.platform === 'youtube' ? 'YouTube' : 'TikTok'}</span>
-          <span>${dateStr}</span>
-          ${item.duration ? `<span class="stream-duration">${item.duration}</span>` : ''}
-          ${item.viewers ? `<span>👥 ${item.viewers.toLocaleString()}</span>` : ''}
-        </div>
-      </div>
-    `;
-    container.appendChild(card);
+  function parseTWDuration(dur) {
+    if (!dur) return '';
+    const m = dur.match(/(?:(\d+)h)?(?:(\d+)m)?/);
+    const h = parseInt(m?.[1]||0), min = parseInt(m?.[2]||0);
+    return h > 0 ? `${h}h ${min}m` : min > 0 ? `${min}m` : '';
   }
 
-  function makeCard(item, i) {
+  function makeCard(item) {
     const card = document.createElement('a');
     card.className = 'stream-card';
     card.href = item.url;
     card.target = '_blank';
     card.rel = 'noopener';
-    card.style.animationDelay = `${i * 0.05}s`;
-    const icons = { twitch: '🎮', youtube: '▶', tiktok: '🎵' };
-    const label = item.platform === 'twitch' ? 'Twitch' : item.platform === 'youtube' ? 'YouTube' : 'TikTok';
+    const icons = { twitch: '🎮', youtube: '▶' };
+    const label = item.platform === 'twitch' ? 'Twitch' : 'YouTube';
     card.innerHTML = `
-      <div class="stream-thumb ${item.platform}">${icons[item.platform] || '🎥'}</div>
+      <div class="stream-thumb ${item.platform}">${icons[item.platform]||'🎥'}</div>
       <div class="stream-info">
         <div class="stream-title">${item.title}</div>
         <div class="stream-meta">
@@ -353,37 +264,27 @@
     return card;
   }
 
-  function renderSection(id, items) {
+  function renderList(id, items, limit) {
     const el = document.getElementById(id);
     el.innerHTML = '';
-    if (!items.length) {
-      el.innerHTML = '<div class="error-msg">データがありません</div>';
+    const list = limit ? items.slice(0, limit) : items;
+    if (!list.length) {
+      el.innerHTML = '<div class="empty-msg">データがありません</div>';
       return;
     }
-    items.forEach((item, i) => el.appendChild(makeCard(item, i)));
-  }
-
-  function parseTwitchDuration(dur) {
-    if (!dur) return '';
-    const m = dur.match(/(?:(\d+)h)?(?:(\d+)m)?/);
-    const h = parseInt(m?.[1] || 0), min = parseInt(m?.[2] || 0);
-    return h > 0 ? `${h}h ${min}m` : min > 0 ? `${min}m` : '';
+    list.forEach(item => el.appendChild(makeCard(item)));
   }
 
   async function loadData() {
-    const timeline = document.getElementById('timeline');
-    timeline.innerHTML = '<div class="loading">配信情報を読み込み中</div>';
-
-    const streamItems = []; // 最近の配信（YT配信アーカイブ＋Twitchアーカイブ）
-    const ytVideoItems = []; // YouTubeの通常動画
-    const twClipItems = []; // Twitchのクリップ
-    let twitchLive = null;
     let youtubeLive = null;
+    let twitchLive = null;
+    const streamItems = [];   // 最近の配信（YTアーカイブ＋TWアーカイブ）
+    const ytVideoItems = [];  // YouTubeの通常動画
+    const twClipItems = [];   // Twitchのクリップ
 
-    // YouTube取得
+    // YouTube
     try {
-      const ytRes = await fetch('/api/youtube');
-      const ytData = await ytRes.json();
+      const ytData = await fetch('/api/youtube').then(r => r.json());
 
       // ライブ中
       if (ytData.live?.length > 0) {
@@ -392,43 +293,38 @@
         youtubeLive = {
           title: l.snippet?.title || 'YouTube配信中',
           url: `https://www.youtube.com/watch?v=${videoId}`,
-          platform: 'youtube',
-          viewers: l.liveStreamingDetails?.concurrentViewers
+          platform: 'youtube'
         };
       }
 
-      // 配信アーカイブ → 最近の配信へ
+      // 配信アーカイブ → 最近の配信
       (ytData.archives || []).forEach(v => {
         streamItems.push({
           title: v.snippet?.title || '不明',
           date: v.snippet?.publishedAt,
           url: `https://www.youtube.com/watch?v=${v.id}`,
           platform: 'youtube',
-          duration: parseDuration(v.contentDetails?.duration)
+          duration: parseYTDuration(v.contentDetails?.duration)
         });
       });
 
-      // 通常動画 → YouTubeの動画へ（ライブ配信を除外）
+      // 通常動画（eventType=noneで取得済みなのでそのまま使う）
       (ytData.videos || []).forEach(v => {
-        const liveStatus = v.snippet?.liveBroadcastContent;
-        // liveBroadcastContentが'live'または'upcoming'のものは除外
-        if (liveStatus === 'live' || liveStatus === 'upcoming') return;
         ytVideoItems.push({
           title: v.snippet?.title || '不明',
           date: v.snippet?.publishedAt,
           url: `https://www.youtube.com/watch?v=${v.id}`,
           platform: 'youtube',
-          duration: parseDuration(v.contentDetails?.duration)
+          duration: parseYTDuration(v.contentDetails?.duration)
         });
       });
     } catch(e) {
       console.error('YouTube error:', e);
     }
 
-    // Twitch取得
+    // Twitch
     try {
-      const twRes = await fetch('/api/twitch');
-      const twData = await twRes.json();
+      const twData = await fetch('/api/twitch').then(r => r.json());
 
       // ライブ中
       if (twData.live?.length > 0) {
@@ -441,26 +337,26 @@
         };
       }
 
-      // アーカイブ → 最近の配信へ
+      // アーカイブ → 最近の配信
       (twData.archives || []).forEach(v => {
         streamItems.push({
           title: v.title || '不明',
           date: v.created_at,
           url: v.url,
           platform: 'twitch',
-          duration: parseTwitchDuration(v.duration),
+          duration: parseTWDuration(v.duration),
           viewers: v.view_count
         });
       });
 
-      // クリップ → Twitchのクリップへ
+      // クリップ
       (twData.clips || []).forEach(c => {
         twClipItems.push({
           title: c.title || '不明',
           date: c.created_at,
           url: c.url,
           platform: 'twitch',
-          duration: `${Math.floor(c.duration / 60)}m`,
+          duration: c.duration > 60 ? `${Math.floor(c.duration/60)}m` : `${Math.floor(c.duration)}s`,
           viewers: c.view_count
         });
       });
@@ -468,40 +364,38 @@
       console.error('Twitch error:', e);
     }
 
-    // ライブバナー表示
-    const liveBanner = document.getElementById('liveBanner');
+    // ライブバナー
     const liveData = twitchLive || youtubeLive;
     if (liveData) {
-      liveBanner.classList.remove('hidden');
-      liveBanner.href = liveData.url;
+      const banner = document.getElementById('liveBanner');
+      banner.classList.remove('hidden');
+      banner.href = liveData.url;
       document.getElementById('liveTitle').textContent = liveData.title;
       document.getElementById('livePlatform').textContent = liveData.platform === 'twitch' ? 'Twitch' : 'YouTube';
       document.getElementById('livePlatform').className = `platform-badge ${liveData.platform}`;
-      const meta = liveData.viewers ? `👥 ${Number(liveData.viewers).toLocaleString()}人視聴中` : '';
-      document.getElementById('liveMeta').textContent = meta;
+      document.getElementById('liveMeta').textContent = liveData.viewers ? `👥 ${Number(liveData.viewers).toLocaleString()}人視聴中` : '';
     }
 
-    // 最近の配信：日付順ソート
+    // 最近の配信：日付降順
     streamItems.sort((a, b) => new Date(b.date) - new Date(a.date));
-    renderSection('timeline', streamItems.slice(0, 15));
+    renderList('streamTimeline', streamItems, 15);
 
-    // YouTubeの動画：日付順
+    // YouTubeの動画：日付降順
     ytVideoItems.sort((a, b) => new Date(b.date) - new Date(a.date));
-    renderSection('ytVideos', ytVideoItems.slice(0, 10));
+    renderList('ytTimeline', ytVideoItems, 10);
 
-    // Twitchのクリップ：日付順
+    // Twitchのクリップ：日付降順
     twClipItems.sort((a, b) => new Date(b.date) - new Date(a.date));
-    renderSection('twClips', twClipItems.slice(0, 10));
+    renderList('twClipTimeline', twClipItems, 10);
 
     // 統計
-    const allItems = [...streamItems, ...ytVideoItems];
-    const thisMonth = allItems.filter(i => {
+    const thisMonth = streamItems.filter(i => {
       const d = new Date(i.date);
       const now = new Date();
       return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     });
     document.getElementById('statCount').textContent = thisMonth.length;
-    const platforms = [...new Set(allItems.map(i => i.platform))].length;
+    const platforms = [...new Set(streamItems.map(i => i.platform))].length;
     document.getElementById('statPlatforms').textContent = platforms;
     if (streamItems[0]) {
       const d = new Date(streamItems[0].date);
@@ -511,6 +405,5 @@
 
   loadData();
 </script>
-
 </body>
 </html>

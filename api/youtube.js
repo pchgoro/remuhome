@@ -11,34 +11,32 @@ export default async function handler(req, res) {
     );
     const liveData = await liveRes.json();
 
-    // ライブアーカイブ（配信録画）
+    // 配信アーカイブ（completed = 終了した配信）
     const archiveRes = await fetch(
       `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${CHANNEL_ID}&eventType=completed&type=video&order=date&maxResults=10&key=${YOUTUBE_API_KEY}`
     );
     const archiveData = await archiveRes.json();
+    const archiveIds = (archiveData.items || []).map(v => v.id.videoId).join(',');
 
-    // 通常動画（配信以外）
-    const videosRes = await fetch(
-      `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${CHANNEL_ID}&type=video&order=date&maxResults=15&key=${YOUTUBE_API_KEY}`
-    );
-    const videosData = await videosRes.json();
-
-    // アーカイブの詳細（時間など）
-    const archiveIds = archiveData.items?.map(v => v.id.videoId).join(',');
     let archiveDetails = { items: [] };
     if (archiveIds) {
       const r = await fetch(
-        `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,liveStreamingDetails,statistics&id=${archiveIds}&key=${YOUTUBE_API_KEY}`
+        `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,liveStreamingDetails&id=${archiveIds}&key=${YOUTUBE_API_KEY}`
       );
       archiveDetails = await r.json();
     }
 
-    // 通常動画の詳細
-    const videoIds = videosData.items?.map(v => v.id.videoId).join(',');
+    // 通常動画（none = ライブでない動画）
+    const videosRes = await fetch(
+      `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${CHANNEL_ID}&eventType=none&type=video&order=date&maxResults=10&key=${YOUTUBE_API_KEY}`
+    );
+    const videosData = await videosRes.json();
+    const videoIds = (videosData.items || []).map(v => v.id.videoId).join(',');
+
     let videoDetails = { items: [] };
     if (videoIds) {
       const r = await fetch(
-        `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${videoIds}&key=${YOUTUBE_API_KEY}`
+        `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoIds}&key=${YOUTUBE_API_KEY}`
       );
       videoDetails = await r.json();
     }
