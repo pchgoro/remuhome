@@ -19,7 +19,7 @@ export default async function handler(req, res) {
 
     // 通常動画（配信以外）
     const videosRes = await fetch(
-      `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${CHANNEL_ID}&type=video&order=date&maxResults=10&key=${YOUTUBE_API_KEY}`
+      `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${CHANNEL_ID}&type=video&order=date&maxResults=10&videoDuration=medium&videoType=none&key=${YOUTUBE_API_KEY}`
     );
     const videosData = await videosRes.json();
 
