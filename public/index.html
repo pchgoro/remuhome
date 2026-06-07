@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>たろ民サポートアプリ</title>
+  <title>たろ民サポ�Eトアプリ</title>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;700;900&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -224,10 +224,10 @@
 <header>
   <div class="logo">
     <span class="logo-icon">🐈⚡</span>
-    <span class="logo-text">たろ民サポートアプリ</span>
+    <span class="logo-text">たろ民サポ�Eトアプリ</span>
   </div>
   <nav>
-    <button class="active">ホーム</button>
+    <button class="active">ホ�Eム</button>
   </nav>
 </header>
 
@@ -235,13 +235,13 @@
   <div class="profile-banner">
     <div class="avatar">🐈</div>
     <div class="profile-info">
-      <h1>れむたろす</h1>
-      <p>高身長女性キャラ大好き配信者 ✨ Twitch & YouTube Partner</p>
-      <div class="fan-badge">🐈⚡ たろ民サポートアプリ</div>
+      <h1>れ�EたろぁE/h1>
+      <p>高身長女性キャラ大好き�E信老E✨ Twitch & YouTube Partner</p>
+      <div class="fan-badge">🐈⚡ たろ民サポ�Eトアプリ</div>
     </div>
   </div>
 
-  <!-- ライブバナー（JSで制御） -->
+  <!-- ライブバナ�E�E�ESで制御�E�E-->
   <a id="liveBanner" class="live-banner hidden" href="#" target="_blank" rel="noopener">
     <div class="live-dot"></div>
     <div class="live-info">
@@ -253,27 +253,26 @@
     <button class="watch-btn">今すぐ見る</button>
   </a>
 
-  <div class="section-title">📋 最近の配信</div>
+  <div class="section-title">📋 最近�E配信</div>
   <div class="timeline" id="timeline">
-    <div class="loading">配信情報を読み込み中</div>
+    <div class="loading">配信惁E��を読み込み中</div>
   </div>
 
-  <div class="section-title">📊 今月の統計</div>
+  <div class="section-title">📊 今月の統訁E/div>
   <div class="stats-grid" id="statsGrid">
     <div class="stat-card"><div class="stat-value" id="statCount">-</div><div class="stat-label">今月の配信数</div></div>
-    <div class="stat-card"><div class="stat-value" id="statPlatforms">-</div><div class="stat-label">配信プラットフォーム</div></div>
-    <div class="stat-card"><div class="stat-value" id="statLatest">-</div><div class="stat-label">最終配信</div></div>
+    <div class="stat-card"><div class="stat-value" id="statPlatforms">-</div><div class="stat-label">配信プラチE��フォーム</div></div>
+    <div class="stat-card"><div class="stat-value" id="statLatest">-</div><div class="stat-label">最終�E信</div></div>
   </div>
 </main>
 
 <div class="bottom-nav">
-  <button class="nav-item active"><span class="nav-icon">🏠</span><span class="nav-label">ホーム</span></button>
-  <button class="nav-item"><span class="nav-icon">⚙️</span><span class="nav-label">設定</span></button>
+  <button class="nav-item active"><span class="nav-icon">🏠</span><span class="nav-label">ホ�Eム</span></button>
+  <button class="nav-item"><span class="nav-icon">⚙︁E/span><span class="nav-label">設宁E/span></button>
 </div>
 
 <script>
-  // 日付フォーマット
-  function formatDate(dateStr) {
+  // 日付フォーマッチE  function formatDate(dateStr) {
     const d = new Date(dateStr);
     const now = new Date();
     const diff = now - d;
@@ -283,7 +282,7 @@
     return `${d.getMonth()+1}/${d.getDate()}`;
   }
 
-  // ISO8601 duration → 時間表示
+  // ISO8601 duration ↁE時間表示
   function parseDuration(iso) {
     if (!iso) return '';
     const m = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
@@ -321,14 +320,13 @@
 
   async function loadData() {
     const timeline = document.getElementById('timeline');
-    timeline.innerHTML = '<div class="loading">配信情報を読み込み中</div>';
+    timeline.innerHTML = '<div class="loading">配信惁E��を読み込み中</div>';
 
     const allItems = [];
     let twitchLive = null;
     let youtubeLive = null;
 
-    // YouTube取得
-    try {
+    // YouTube取征E    try {
       const ytRes = await fetch('/api/youtube');
       const ytData = await ytRes.json();
 
@@ -344,7 +342,7 @@
 
       (ytData.videos || []).forEach(v => {
         allItems.push({
-          title: v.snippet?.title || '不明',
+          title: v.snippet?.title || '不�E',
           date: v.snippet?.publishedAt,
           url: `https://www.youtube.com/watch?v=${v.id}`,
           platform: 'youtube',
@@ -355,8 +353,7 @@
       console.error('YouTube error:', e);
     }
 
-    // Twitch取得
-    try {
+    // Twitch取征E    try {
       const twRes = await fetch('/api/twitch');
       const twData = await twRes.json();
 
@@ -373,7 +370,7 @@
 
       (twData.clips || []).forEach(c => {
         allItems.push({
-          title: c.title || '不明',
+          title: c.title || '不�E',
           date: c.created_at,
           url: c.url,
           platform: 'twitch',
@@ -385,7 +382,7 @@
       console.error('Twitch error:', e);
     }
 
-    // ライブバナー表示
+    // ライブバナ�E表示
     const liveBanner = document.getElementById('liveBanner');
     const liveData = twitchLive || youtubeLive;
     if (liveData) {
@@ -394,19 +391,18 @@
       document.getElementById('liveTitle').textContent = liveData.title;
       document.getElementById('livePlatform').textContent = liveData.platform === 'twitch' ? 'Twitch' : 'YouTube';
       document.getElementById('livePlatform').className = `platform-badge ${liveData.platform}`;
-      const meta = liveData.viewers ? `👥 ${Number(liveData.viewers).toLocaleString()}人視聴中` : '';
+      const meta = liveData.viewers ? `👥 ${Number(liveData.viewers).toLocaleString()}人視�E中` : '';
       document.getElementById('liveMeta').textContent = meta;
     }
 
     // タイムライン表示
     timeline.innerHTML = '';
     if (allItems.length === 0) {
-      timeline.innerHTML = '<div class="error-msg">配信情報を取得できませんでした</div>';
+      timeline.innerHTML = '<div class="error-msg">配信惁E��を取得できませんでした</div>';
       return;
     }
 
-    // 日付順ソート
-    allItems.sort((a, b) => new Date(b.date) - new Date(a.date));
+    // 日付頁E��ーチE    allItems.sort((a, b) => new Date(b.date) - new Date(a.date));
     allItems.slice(0, 15).forEach((item, i) => {
       const card = document.createElement('a');
       card.className = `stream-card`;
@@ -431,8 +427,7 @@
       timeline.appendChild(card);
     });
 
-    // 統計
-    const thisMonth = allItems.filter(i => {
+    // 統訁E    const thisMonth = allItems.filter(i => {
       const d = new Date(i.date);
       const now = new Date();
       return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
