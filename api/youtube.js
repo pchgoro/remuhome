@@ -5,46 +5,53 @@ export default async function handler(req, res) {
   const CHANNEL_ID = 'UC6FgzOrl2Nmw7737hNXpKqw';
 
   try {
-    // ライブ配信中か確認
-    const liveRes = await fetch(
-      `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${CHANNEL_ID}&eventType=live&type=video&key=${YOUTUBE_API_KEY}`
+    // Search APIは1回だけ（最新20件を取得）
+    const searchRes = await fetch(
+      `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${CHANNEL_ID}&type=video&order=date&maxResults=20&key=${YOUTUBE_API_KEY}`
     );
-    const liveData = await liveRes.json();
+    const searchData = await searchRes.json();
 
-    // 配信アーカイブ（completed = 終了した配信）
-    const archiveRes = await fetch(
-      `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${CHANNEL_ID}&eventType=completed&type=video&order=date&maxResults=10&key=${YOUTUBE_API_KEY}`
-    );
-    const archiveData = await archiveRes.json();
-    const archiveIds = (archiveData.items || []).map(v => v.id.videoId).join(',');
-
-    let archiveDetails = { items: [] };
-    if (archiveIds) {
-      const r = await fetch(
-        `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,liveStreamingDetails&id=${archiveIds}&key=${YOUTUBE_API_KEY}`
-      );
-      archiveDetails = await r.json();
+    if (searchData.error) {
+      return res.status(200).json({ live: [], archives: [], videos: [], error: searchData.error.message });
     }
 
-    // 通常動画（none = ライブでない動画）
-    const videosRes = await fetch(
-      `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${CHANNEL_ID}&eventType=none&type=video&order=date&maxResults=10&key=${YOUTUBE_API_KEY}`
-    );
-    const videosData = await videosRes.json();
-    const videoIds = (videosData.items || []).map(v => v.id.videoId).join(',');
+    const allItems = searchData.items || [];
+
+    // ライブ中を抽出
+    const liveItems = allItems.filter(v => v.snippet?.liveBroadcastContent === 'live');
+
+    // ライブ以外の動画IDをまとめて取得（Videos APIはクォータ消費が少ない）
+    const nonLiveIds = allItems
+      .filter(v => v.snippet?.liveBroadcastContent !== 'live')
+      .map(v => v.id?.videoId)
+      .filter(Boolean)
+      .join(',');
 
     let videoDetails = { items: [] };
-    if (videoIds) {
-      const r = await fetch(
-        `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoIds}&key=${YOUTUBE_API_KEY}`
+    if (nonLiveIds) {
+      const detailRes = await fetch(
+        `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,liveStreamingDetails&id=${nonLiveIds}&key=${YOUTUBE_API_KEY}`
       );
-      videoDetails = await r.json();
+      videoDetails = await detailRes.json();
     }
 
+    // アーカイブ（配信録画）と通常動画に分類
+    const archives = [];
+    const videos = [];
+    (videoDetails.items || []).forEach(v => {
+      const lbc = v.snippet?.liveBroadcastContent;
+      const hasLiveDetails = v.liveStreamingDetails?.actualStartTime;
+      if (hasLiveDetails || lbc === 'completed') {
+        archives.push(v);
+      } else {
+        videos.push(v);
+      }
+    });
+
     res.status(200).json({
-      live: liveData.items || [],
-      archives: archiveDetails.items || [],
-      videos: videoDetails.items || []
+      live: liveItems,
+      archives,
+      videos
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
