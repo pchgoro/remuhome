@@ -408,8 +408,11 @@
         });
       });
 
-      // 通常動画 → YouTubeの動画へ
+      // 通常動画 → YouTubeの動画へ（ライブ配信を除外）
       (ytData.videos || []).forEach(v => {
+        const liveStatus = v.snippet?.liveBroadcastContent;
+        // liveBroadcastContentが'live'または'upcoming'のものは除外
+        if (liveStatus === 'live' || liveStatus === 'upcoming') return;
         ytVideoItems.push({
           title: v.snippet?.title || '不明',
           date: v.snippet?.publishedAt,

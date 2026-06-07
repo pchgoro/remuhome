@@ -40,7 +40,7 @@ export default async function handler(req, res) {
 
     // クリップ
     const clipsRes = await fetch(
-      `https://api.twitch.tv/helix/clips?broadcaster_id=${userId}&first=10&sort=created_at`,
+      `https://api.twitch.tv/helix/clips?broadcaster_id=${userId}&first=10`,
       { headers: { 'Client-Id': CLIENT_ID, 'Authorization': `Bearer ${accessToken}` } }
     );
     const clipsData = await clipsRes.json();
