@@ -22,7 +22,6 @@ export default async function handler(req, res) {
     );
     const userData = await userRes.json();
     const userId = userData.data?.[0]?.id;
-
     if (!userId) throw new Error('ユーザーが見つかりません');
 
     // ライブ配信中か確認
@@ -32,16 +31,24 @@ export default async function handler(req, res) {
     );
     const streamData = await streamRes.json();
 
-    // 過去の配信アーカイブ（クリップではなくビデオ）
-    const videosRes = await fetch(
+    // 過去配信アーカイブ
+    const archiveRes = await fetch(
       `https://api.twitch.tv/helix/videos?user_id=${userId}&first=10&type=archive`,
       { headers: { 'Client-Id': CLIENT_ID, 'Authorization': `Bearer ${accessToken}` } }
     );
-    const videosData = await videosRes.json();
+    const archiveData = await archiveRes.json();
+
+    // クリップ
+    const clipsRes = await fetch(
+      `https://api.twitch.tv/helix/clips?broadcaster_id=${userId}&first=10`,
+      { headers: { 'Client-Id': CLIENT_ID, 'Authorization': `Bearer ${accessToken}` } }
+    );
+    const clipsData = await clipsRes.json();
 
     res.status(200).json({
       live: streamData.data || [],
-      videos: videosData.data || [],
+      archives: archiveData.data || [],
+      clips: clipsData.data || []
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -258,6 +258,16 @@
     <div class="loading">配信情報を読み込み中</div>
   </div>
 
+  <div class="section-title">▶ YouTubeの動画</div>
+  <div class="timeline" id="ytVideos">
+    <div class="loading">読み込み中</div>
+  </div>
+
+  <div class="section-title">🎮 Twitchのクリップ</div>
+  <div class="timeline" id="twClips">
+    <div class="loading">読み込み中</div>
+  </div>
+
   <div class="section-title">📊 今月の統計</div>
   <div class="stats-grid" id="statsGrid">
     <div class="stat-card"><div class="stat-value" id="statCount">-</div><div class="stat-label">今月の配信数</div></div>
@@ -319,11 +329,54 @@
     container.appendChild(card);
   }
 
+  function makeCard(item, i) {
+    const card = document.createElement('a');
+    card.className = 'stream-card';
+    card.href = item.url;
+    card.target = '_blank';
+    card.rel = 'noopener';
+    card.style.animationDelay = `${i * 0.05}s`;
+    const icons = { twitch: '🎮', youtube: '▶', tiktok: '🎵' };
+    const label = item.platform === 'twitch' ? 'Twitch' : item.platform === 'youtube' ? 'YouTube' : 'TikTok';
+    card.innerHTML = `
+      <div class="stream-thumb ${item.platform}">${icons[item.platform] || '🎥'}</div>
+      <div class="stream-info">
+        <div class="stream-title">${item.title}</div>
+        <div class="stream-meta">
+          <span class="platform-badge ${item.platform}">${label}</span>
+          <span>${formatDate(item.date)}</span>
+          ${item.duration ? `<span class="stream-duration">${item.duration}</span>` : ''}
+          ${item.viewers ? `<span>👥 ${Number(item.viewers).toLocaleString()}</span>` : ''}
+        </div>
+      </div>
+    `;
+    return card;
+  }
+
+  function renderSection(id, items) {
+    const el = document.getElementById(id);
+    el.innerHTML = '';
+    if (!items.length) {
+      el.innerHTML = '<div class="error-msg">データがありません</div>';
+      return;
+    }
+    items.forEach((item, i) => el.appendChild(makeCard(item, i)));
+  }
+
+  function parseTwitchDuration(dur) {
+    if (!dur) return '';
+    const m = dur.match(/(?:(\d+)h)?(?:(\d+)m)?/);
+    const h = parseInt(m?.[1] || 0), min = parseInt(m?.[2] || 0);
+    return h > 0 ? `${h}h ${min}m` : min > 0 ? `${min}m` : '';
+  }
+
   async function loadData() {
     const timeline = document.getElementById('timeline');
     timeline.innerHTML = '<div class="loading">配信情報を読み込み中</div>';
 
-    const allItems = [];
+    const streamItems = []; // 最近の配信（YT配信アーカイブ＋Twitchアーカイブ）
+    const ytVideoItems = []; // YouTubeの通常動画
+    const twClipItems = []; // Twitchのクリップ
     let twitchLive = null;
     let youtubeLive = null;
 
@@ -332,6 +385,7 @@
       const ytRes = await fetch('/api/youtube');
       const ytData = await ytRes.json();
 
+      // ライブ中
       if (ytData.live?.length > 0) {
         const l = ytData.live[0];
         const videoId = l.id?.videoId || l.id;
@@ -343,8 +397,20 @@
         };
       }
 
+      // 配信アーカイブ → 最近の配信へ
+      (ytData.archives || []).forEach(v => {
+        streamItems.push({
+          title: v.snippet?.title || '不明',
+          date: v.snippet?.publishedAt,
+          url: `https://www.youtube.com/watch?v=${v.id}`,
+          platform: 'youtube',
+          duration: parseDuration(v.contentDetails?.duration)
+        });
+      });
+
+      // 通常動画 → YouTubeの動画へ
       (ytData.videos || []).forEach(v => {
-        allItems.push({
+        ytVideoItems.push({
           title: v.snippet?.title || '不明',
           date: v.snippet?.publishedAt,
           url: `https://www.youtube.com/watch?v=${v.id}`,
@@ -361,30 +427,38 @@
       const twRes = await fetch('/api/twitch');
       const twData = await twRes.json();
 
+      // ライブ中
       if (twData.live?.length > 0) {
         const l = twData.live[0];
         twitchLive = {
           title: l.title || 'Twitch配信中',
-          url: `https://twitch.tv/remutarosu`,
+          url: 'https://twitch.tv/remutarosu',
           platform: 'twitch',
-          viewers: l.viewer_count,
-          startedAt: l.started_at
+          viewers: l.viewer_count
         };
       }
 
-      (twData.videos || []).forEach(v => {
-        // duration例: "3h2m10s" → パース
-        const dur = v.duration || '';
-        const hm = dur.match(/(?:(\d+)h)?(?:(\d+)m)?/);
-        const h = parseInt(hm?.[1] || 0), m = parseInt(hm?.[2] || 0);
-        const durStr = h > 0 ? `${h}h ${m}m` : m > 0 ? `${m}m` : '';
-        allItems.push({
+      // アーカイブ → 最近の配信へ
+      (twData.archives || []).forEach(v => {
+        streamItems.push({
           title: v.title || '不明',
           date: v.created_at,
           url: v.url,
           platform: 'twitch',
-          duration: durStr,
+          duration: parseTwitchDuration(v.duration),
           viewers: v.view_count
+        });
+      });
+
+      // クリップ → Twitchのクリップへ
+      (twData.clips || []).forEach(c => {
+        twClipItems.push({
+          title: c.title || '不明',
+          date: c.created_at,
+          url: c.url,
+          platform: 'twitch',
+          duration: `${Math.floor(c.duration / 60)}m`,
+          viewers: c.view_count
         });
       });
     } catch(e) {
@@ -404,51 +478,30 @@
       document.getElementById('liveMeta').textContent = meta;
     }
 
-    // タイムライン表示
-    timeline.innerHTML = '';
-    if (allItems.length === 0) {
-      timeline.innerHTML = '<div class="error-msg">配信情報を取得できませんでした</div>';
-      return;
-    }
+    // 最近の配信：日付順ソート
+    streamItems.sort((a, b) => new Date(b.date) - new Date(a.date));
+    renderSection('timeline', streamItems.slice(0, 15));
 
-    // 日付順ソート
-    allItems.sort((a, b) => new Date(b.date) - new Date(a.date));
-    allItems.slice(0, 15).forEach((item, i) => {
-      const card = document.createElement('a');
-      card.className = `stream-card`;
-      card.href = item.url;
-      card.target = '_blank';
-      card.rel = 'noopener';
-      card.style.animationDelay = `${i * 0.05}s`;
+    // YouTubeの動画：日付順
+    ytVideoItems.sort((a, b) => new Date(b.date) - new Date(a.date));
+    renderSection('ytVideos', ytVideoItems.slice(0, 10));
 
-      const icons = { twitch: '🎮', youtube: '▶', tiktok: '🎵' };
-      card.innerHTML = `
-        <div class="stream-thumb ${item.platform}">${icons[item.platform] || '🎥'}</div>
-        <div class="stream-info">
-          <div class="stream-title">${item.title}</div>
-          <div class="stream-meta">
-            <span class="platform-badge ${item.platform}">${item.platform === 'twitch' ? 'Twitch' : item.platform === 'youtube' ? 'YouTube' : 'TikTok'}</span>
-            <span>${formatDate(item.date)}</span>
-            ${item.duration ? `<span class="stream-duration">${item.duration}</span>` : ''}
-            ${item.viewers ? `<span>👥 ${Number(item.viewers).toLocaleString()}</span>` : ''}
-          </div>
-        </div>
-      `;
-      timeline.appendChild(card);
-    });
+    // Twitchのクリップ：日付順
+    twClipItems.sort((a, b) => new Date(b.date) - new Date(a.date));
+    renderSection('twClips', twClipItems.slice(0, 10));
 
     // 統計
+    const allItems = [...streamItems, ...ytVideoItems];
     const thisMonth = allItems.filter(i => {
       const d = new Date(i.date);
       const now = new Date();
       return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     });
-
     document.getElementById('statCount').textContent = thisMonth.length;
     const platforms = [...new Set(allItems.map(i => i.platform))].length;
     document.getElementById('statPlatforms').textContent = platforms;
-    if (allItems[0]) {
-      const d = new Date(allItems[0].date);
+    if (streamItems[0]) {
+      const d = new Date(streamItems[0].date);
       document.getElementById('statLatest').textContent = `${d.getMonth()+1}/${d.getDate()}`;
     }
   }
