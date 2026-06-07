@@ -334,9 +334,10 @@
 
       if (ytData.live?.length > 0) {
         const l = ytData.live[0];
+        const videoId = l.id?.videoId || l.id;
         youtubeLive = {
           title: l.snippet?.title || 'YouTube配信中',
-          url: `https://www.youtube.com/watch?v=${l.id}`,
+          url: `https://www.youtube.com/watch?v=${videoId}`,
           platform: 'youtube',
           viewers: l.liveStreamingDetails?.concurrentViewers
         };
