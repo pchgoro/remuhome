@@ -1,0 +1,8 @@
+{
+  "name": "remuhome",
+  "version": "1.0.0",
+  "description": "れむたろす配信サポートアプリ",
+  "scripts": {
+    "dev": "vercel dev"
+  }
+}
