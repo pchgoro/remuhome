@@ -17,6 +17,7 @@
       --live: #f87171;
       --twitch: #9146ff;
       --youtube: #ff4444;
+      --tiktok: #25f4ee;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -102,6 +103,7 @@
     .platform-badge { padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; white-space: nowrap; }
     .platform-badge.twitch { background: rgba(145,70,255,0.25); color: var(--twitch); }
     .platform-badge.youtube { background: rgba(255,68,68,0.2); color: var(--youtube); }
+    .platform-badge.tiktok { background: rgba(37,244,238,0.16); color: var(--tiktok); }
     .watch-btn {
       background: var(--live); color: white; border: none;
       border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 700;
@@ -129,6 +131,7 @@
     }
     .stream-thumb.twitch { background: rgba(145,70,255,0.15); }
     .stream-thumb.youtube { background: rgba(255,68,68,0.12); }
+    .stream-thumb.tiktok { background: rgba(37,244,238,0.12); }
     .stream-info { flex: 1; min-width: 0; }
     .stream-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
     .stream-meta { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
@@ -193,6 +196,9 @@
   <div class="section-title">🎮 Twitchのクリップ</div>
   <div class="timeline" id="twClipTimeline"><div class="loading">読み込み中...</div></div>
 
+  <div class="section-title">♪ TikTokの動画</div>
+  <div class="timeline" id="tiktokTimeline"><div class="loading">読み込み中...</div></div>
+
   <div class="section-title">📊 今月の統計</div>
   <div class="stats-grid">
     <div class="stat-card"><div class="stat-value" id="statCount">-</div><div class="stat-label">今月の配信数</div></div>
@@ -243,8 +249,9 @@
     card.href = item.url;
     card.target = '_blank';
     card.rel = 'noopener';
-    const icons = { twitch: '🎮', youtube: '▶' };
-    const label = item.platform === 'twitch' ? 'Twitch' : 'YouTube';
+    const icons = { twitch: '🎮', youtube: '▶', tiktok: '♪' };
+    const labels = { twitch: 'Twitch', youtube: 'YouTube', tiktok: 'TikTok' };
+    const label = labels[item.platform] || item.platform;
     card.innerHTML = `
       <div class="stream-thumb ${item.platform}">${icons[item.platform]||'🎥'}</div>
       <div class="stream-info">
@@ -277,6 +284,7 @@
     const streamItems = [];   // 最近の配信（YTアーカイブ＋TWアーカイブ）
     const ytVideoItems = [];  // YouTubeの通常動画
     const twClipItems = [];   // Twitchのクリップ
+    const tiktokItems = [];   // TikTokの動画
 
     // YouTube
     try {
@@ -361,6 +369,24 @@
       console.error('Twitch error:', e);
     }
 
+    // TikTok
+    try {
+      const tiktokData = await fetch('/api/tiktok').then(r => r.json());
+
+      (tiktokData.videos || []).forEach(v => {
+        tiktokItems.push({
+          title: v.title || 'TikTok動画',
+          date: v.date,
+          url: v.url,
+          platform: 'tiktok',
+          duration: v.duration,
+          viewers: v.view_count
+        });
+      });
+    } catch(e) {
+      console.error('TikTok error:', e);
+    }
+
     // ライブバナー（複数対応）
     const liveList = [twitchLive, youtubeLive].filter(Boolean);
     const bannersEl = document.getElementById('liveBanners');
@@ -398,6 +424,10 @@
     // Twitchのクリップ：日付降順
     twClipItems.sort((a, b) => new Date(b.date) - new Date(a.date));
     renderList('twClipTimeline', twClipItems, 10);
+
+    // TikTokの動画：日付降順
+    tiktokItems.sort((a, b) => new Date(b.date) - new Date(a.date));
+    renderList('tiktokTimeline', tiktokItems, 10);
 
     // 統計
     const thisMonth = streamItems.filter(i => {
