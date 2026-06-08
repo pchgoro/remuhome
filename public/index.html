@@ -182,16 +182,7 @@
     </div>
   </div>
 
-  <a id="liveBanner" class="live-banner hidden" href="#" target="_blank" rel="noopener">
-    <div class="live-dot"></div>
-    <div class="live-info">
-      <div class="live-label">🔴 配信中</div>
-      <div class="live-title" id="liveTitle"></div>
-      <div class="live-meta" id="liveMeta"></div>
-    </div>
-    <span class="platform-badge" id="livePlatform"></span>
-    <button class="watch-btn">今すぐ見る</button>
-  </a>
+  <div id="liveBanners"></div>
 
   <div class="section-title">📋 最近の配信</div>
   <div class="timeline" id="streamTimeline"><div class="loading">読み込み中...</div></div>
@@ -209,6 +200,11 @@
     <div class="stat-card"><div class="stat-value" id="statLatest">-</div><div class="stat-label">最終配信</div></div>
   </div>
 </main>
+
+<footer style="position:relative;z-index:1;max-width:900px;margin:0 auto;padding:12px 16px 90px;text-align:center;font-size:11px;color:#4a4a6a;line-height:1.8;">
+  このアプリはファンが制作した非公式アプリです。配信情報に誤りがある場合があります。<br>
+  正確な情報は<a href="https://x.com/remutarosu" target="_blank" rel="noopener" style="color:#a78bfa;">れむたろすさんのX</a>等をご確認ください。
+</footer>
 
 <div class="bottom-nav">
   <button class="nav-item active"><span class="nav-icon">🏠</span><span class="nav-label">ホーム</span></button>
@@ -350,6 +346,7 @@
       });
 
       // クリップ
+      console.log("clips raw:", twData.clips?.map(c => ({title: c.title, date: c.created_at})));
       (twData.clips || []).forEach(c => {
         twClipItems.push({
           title: c.title || '不明',
@@ -364,17 +361,31 @@
       console.error('Twitch error:', e);
     }
 
-    // ライブバナー
-    const liveData = twitchLive || youtubeLive;
-    if (liveData) {
-      const banner = document.getElementById('liveBanner');
-      banner.classList.remove('hidden');
+    // ライブバナー（複数対応）
+    const liveList = [twitchLive, youtubeLive].filter(Boolean);
+    const bannersEl = document.getElementById('liveBanners');
+    bannersEl.innerHTML = '';
+    liveList.forEach(liveData => {
+      const banner = document.createElement('a');
+      banner.className = 'live-banner';
       banner.href = liveData.url;
-      document.getElementById('liveTitle').textContent = liveData.title;
-      document.getElementById('livePlatform').textContent = liveData.platform === 'twitch' ? 'Twitch' : 'YouTube';
-      document.getElementById('livePlatform').className = `platform-badge ${liveData.platform}`;
-      document.getElementById('liveMeta').textContent = liveData.viewers ? `👥 ${Number(liveData.viewers).toLocaleString()}人視聴中` : '';
-    }
+      banner.target = '_blank';
+      banner.rel = 'noopener';
+      banner.style.marginBottom = '12px';
+      const label = liveData.platform === 'twitch' ? 'Twitch' : 'YouTube';
+      const meta = liveData.viewers ? `👥 ${Number(liveData.viewers).toLocaleString()}人視聴中` : '';
+      banner.innerHTML = `
+        <div class="live-dot"></div>
+        <div class="live-info">
+          <div class="live-label">🔴 配信中</div>
+          <div class="live-title">${liveData.title}</div>
+          ${meta ? `<div class="live-meta">${meta}</div>` : ''}
+        </div>
+        <span class="platform-badge ${liveData.platform}">${label}</span>
+        <button class="watch-btn">今すぐ見る</button>
+      `;
+      bannersEl.appendChild(banner);
+    });
 
     // 最近の配信：日付降順
     streamItems.sort((a, b) => new Date(b.date) - new Date(a.date));
