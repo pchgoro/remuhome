@@ -312,8 +312,10 @@
         });
       });
 
-      // 通常動画（eventType=noneで取得済みなのでそのまま使う）
+      // 通常動画（upcoming=配信予定を除外）
       (ytData.videos || []).forEach(v => {
+        const lbc = v.snippet?.liveBroadcastContent;
+        if (lbc === 'upcoming' || lbc === 'live') return;
         ytVideoItems.push({
           title: v.snippet?.title || '不明',
           date: v.snippet?.publishedAt,
@@ -354,7 +356,6 @@
       });
 
       // クリップ
-      console.log("clips raw:", twData.clips?.map(c => ({title: c.title, date: c.created_at})));
       (twData.clips || []).forEach(c => {
         twClipItems.push({
           title: c.title || '不明',
