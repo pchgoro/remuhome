@@ -104,6 +104,16 @@
     .platform-badge.twitch { background: rgba(145,70,255,0.25); color: var(--twitch); }
     .platform-badge.youtube { background: rgba(255,68,68,0.2); color: var(--youtube); }
     .platform-badge.tiktok { background: rgba(37,244,238,0.16); color: var(--tiktok); }
+    .new-badge {
+      background: rgba(52,211,153,0.18);
+      border: 1px solid rgba(52,211,153,0.35);
+      border-radius: 4px;
+      color: var(--accent3);
+      font-size: 10px;
+      font-weight: 800;
+      padding: 2px 6px;
+      white-space: nowrap;
+    }
     .watch-btn {
       background: var(--live); color: white; border: none;
       border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 700;
@@ -228,6 +238,13 @@
     return `${d.getMonth()+1}/${d.getDate()}`;
   }
 
+  function isNew(dateStr) {
+    if (!dateStr) return false;
+    const d = new Date(dateStr);
+    if (Number.isNaN(d.getTime())) return false;
+    return Date.now() - d.getTime() <= 24 * 60 * 60 * 1000;
+  }
+
   function parseYTDuration(iso) {
     if (!iso) return '';
     const m = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
@@ -258,6 +275,7 @@
         <div class="stream-title">${item.title}</div>
         <div class="stream-meta">
           <span class="platform-badge ${item.platform}">${label}</span>
+          ${isNew(item.date) ? '<span class="new-badge">NEW</span>' : ''}
           <span>${formatDate(item.date)}</span>
           ${item.duration ? `<span class="stream-duration">${item.duration}</span>` : ''}
           ${item.viewers ? `<span>👥 ${Number(item.viewers).toLocaleString()}</span>` : ''}
@@ -297,7 +315,8 @@
         youtubeLive = {
           title: l.snippet?.title || 'YouTube配信中',
           url: `https://www.youtube.com/watch?v=${videoId}`,
-          platform: 'youtube'
+          platform: 'youtube',
+          date: l.snippet?.publishedAt
         };
       }
 
@@ -339,7 +358,8 @@
           title: l.title || 'Twitch配信中',
           url: 'https://twitch.tv/remutarosu',
           platform: 'twitch',
-          viewers: l.viewer_count
+          viewers: l.viewer_count,
+          date: l.started_at
         };
       }
 
@@ -409,6 +429,7 @@
           ${meta ? `<div class="live-meta">${meta}</div>` : ''}
         </div>
         <span class="platform-badge ${liveData.platform}">${label}</span>
+        ${isNew(liveData.date) ? '<span class="new-badge">NEW</span>' : ''}
         <button class="watch-btn">今すぐ見る</button>
       `;
       bannersEl.appendChild(banner);
