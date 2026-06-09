@@ -48,12 +48,15 @@ export default async function handler(req, res) {
 
   const cached = await readCache(CACHE_KEY);
   if (cached) {
+    console.log('youtube cache hit');
     return res.status(200).json(cached);
   }
+  console.log('youtube cache miss');
 
   const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 
   try {
+    console.log('youtube api fetch: search');
     const searchRes = await fetch(
       `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${CHANNEL_ID}&type=video&order=date&maxResults=20&key=${YOUTUBE_API_KEY}`
     );
@@ -74,6 +77,7 @@ export default async function handler(req, res) {
 
     let videoDetails = { items: [] };
     if (nonLiveIds) {
+      console.log('youtube api fetch: videos');
       const detailRes = await fetch(
         `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,liveStreamingDetails&id=${nonLiveIds}&key=${YOUTUBE_API_KEY}`
       );
