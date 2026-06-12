@@ -106,6 +106,12 @@ export default async function handler(req, res) {
 
   const notifications = [];
 
+notifications.push({
+ title:'通知テスト',
+ body:'ここが届けば完成',
+ url:'/'
+});
+
   // Check YouTube Live
   if (ytData && !ytData.error) {
     if (ytLiveId && ytLiveId !== lastCheckedState.youtube_live) {
