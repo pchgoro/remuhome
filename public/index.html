@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>たろみんサポートアプリ β版</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="たろみん">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;700;900&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -312,6 +317,96 @@
         order: 1;
       }
     }
+    
+    /* Settings panel styling */
+    .settings-card {
+      background: var(--card);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .settings-card h3 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .settings-card p {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+      margin-bottom: 14px;
+    }
+    .settings-toggle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 12px 16px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.03);
+    }
+    .settings-status-msg {
+      font-size: 12px;
+      margin-top: 10px;
+      color: var(--accent2);
+      line-height: 1.4;
+    }
+    
+    /* Toggle Switch */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 46px;
+      height: 26px;
+      flex-shrink: 0;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(255, 255, 255, 0.1);
+      transition: .3s;
+      border-radius: 34px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: var(--accent);
+    }
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+    
+    /* iOS install steps */
+    .ios-install-steps {
+      margin-left: 20px;
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.8;
+    }
+    .ios-install-steps li {
+      margin-bottom: 6px;
+    }
   </style>
 </head>
 <body>
@@ -324,45 +419,85 @@
 </header>
 
 <main>
-  <div class="profile-banner">
-    <div class="avatar">🐈</div>
-    <div class="profile-info">
-      <h1>れむたろす</h1>
-      <p>高身長女性キャラ大好き配信者 ✨ Twitch & YouTube Partner</p>
-      <div class="fan-badge">🐈⚡ たろみんサポートアプリ</div>
+  <div id="homeView">
+    <div class="profile-banner">
+      <div class="avatar">🐈</div>
+      <div class="profile-info">
+        <h1>れむたろす</h1>
+        <p>高身長女性キャラ大好き配信者 ✨ Twitch & YouTube Partner</p>
+        <div class="fan-badge">🐈⚡ たろみんサポートアプリ</div>
+      </div>
     </div>
+
+    <div id="liveBanners"></div>
+
+    <div class="section-title">📋 最近の配信</div>
+    <div class="timeline" id="streamTimeline"><div class="loading">読み込み中...</div></div>
+
+    <div class="section-title">▶ YouTubeの動画</div>
+    <div class="timeline" id="ytTimeline"><div class="loading">読み込み中...</div></div>
+
+    <div class="section-title">🎮 Twitchのクリップ</div>
+    <div class="timeline" id="twClipTimeline"><div class="loading">読み込み中...</div></div>
+
+    <div class="section-title">♪ TikTokの動画</div>
+    <div class="timeline" id="tiktokTimeline"><div class="loading">読み込み中...</div></div>
+
+    <div class="section-title">📊 今月の統計</div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-value" id="statCount">-</div><div class="stat-label">今月の配信数</div></div>
+      <div class="stat-card"><div class="stat-value" id="statPlatforms">-</div><div class="stat-label">配信プラットフォーム</div></div>
+      <div class="stat-card"><div class="stat-value" id="statLatest">-</div><div class="stat-label">最終配信</div></div>
+    </div>
+
+    <footer style="position:relative;z-index:1;max-width:900px;margin:32px auto 0;padding:12px 16px 20px;text-align:center;font-size:11px;color:#4a4a6a;line-height:1.8;">
+      このアプリはファンが制作した非公式アプリです。配信情報に誤りがある場合があります。<br>
+      正確な情報は<a href="https://x.com/remutarosu" target="_blank" rel="noopener" style="color:#a78bfa;">れむたろすさんのX</a>等をご確認ください。
+    </footer>
   </div>
 
-  <div id="liveBanners"></div>
+  <div id="settingsView" style="display: none; animation: fadeIn 0.3s ease-out;">
+    <div class="section-title">⚙️ アプリの設定</div>
+    
+    <div class="settings-card">
+      <h3>🔔 プッシュ通知</h3>
+      <p>配信が始まったり、新しい動画が投稿されたらデバイスにプッシュ通知でお知らせします。</p>
+      <div class="settings-toggle-row">
+        <span>通知を受け取る</span>
+        <label class="switch">
+          <input type="checkbox" id="pushToggle">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div id="pushStatusMsg" class="settings-status-msg"></div>
+    </div>
 
-  <div class="section-title">📋 最近の配信</div>
-  <div class="timeline" id="streamTimeline"><div class="loading">読み込み中...</div></div>
+    <div class="settings-card" id="iosInstallCard" style="display: none;">
+      <h3>📲 iPhone / iPad で追加する方法</h3>
+      <p>iOS（Safari）では、ホーム画面にアプリを追加することでプッシュ通知が有効になります。</p>
+      <ol class="ios-install-steps">
+        <li>Safariの画面下部にある共有ボタン（<span style="font-size: 16px;">📤</span>）をタップします。</li>
+        <li>メニューから「<strong>ホーム画面に追加</strong>」を選択します。</li>
+        <li>追加されたホーム画面のアイコンからアプリを起動し、この「設定」タブで通知を有効にしてください。</li>
+      </ol>
+    </div>
+    
+    <div class="settings-card">
+      <h3>ℹ️ アプリ情報</h3>
+      <p style="margin-bottom: 6px; font-weight: 600;">たろみんサポートアプリ β版</p>
+      <p style="color: var(--muted); font-size: 12px;">バージョン: 1.1.0 (PWA対応)</p>
+    </div>
 
-  <div class="section-title">▶ YouTubeの動画</div>
-  <div class="timeline" id="ytTimeline"><div class="loading">読み込み中...</div></div>
-
-  <div class="section-title">🎮 Twitchのクリップ</div>
-  <div class="timeline" id="twClipTimeline"><div class="loading">読み込み中...</div></div>
-
-  <div class="section-title">♪ TikTokの動画</div>
-  <div class="timeline" id="tiktokTimeline"><div class="loading">読み込み中...</div></div>
-
-  <div class="section-title">📊 今月の統計</div>
-  <div class="stats-grid">
-    <div class="stat-card"><div class="stat-value" id="statCount">-</div><div class="stat-label">今月の配信数</div></div>
-    <div class="stat-card"><div class="stat-value" id="statPlatforms">-</div><div class="stat-label">配信プラットフォーム</div></div>
-    <div class="stat-card"><div class="stat-value" id="statLatest">-</div><div class="stat-label">最終配信</div></div>
+    <footer style="position:relative;z-index:1;max-width:900px;margin:32px auto 0;padding:12px 16px 20px;text-align:center;font-size:11px;color:#4a4a6a;line-height:1.8;">
+      このアプリはファンが制作した非公式アプリです。配信情報に誤りがある場合があります。<br>
+      正確な情報は<a href="https://x.com/remutarosu" target="_blank" rel="noopener" style="color:#a78bfa;">れむたろすさんのX</a>等をご確認ください。
+    </footer>
   </div>
 </main>
 
-<footer style="position:relative;z-index:1;max-width:900px;margin:0 auto;padding:12px 16px 90px;text-align:center;font-size:11px;color:#4a4a6a;line-height:1.8;">
-  このアプリはファンが制作した非公式アプリです。配信情報に誤りがある場合があります。<br>
-  正確な情報は<a href="https://x.com/remutarosu" target="_blank" rel="noopener" style="color:#a78bfa;">れむたろすさんのX</a>等をご確認ください。
-</footer>
-
 <div class="bottom-nav">
-  <button class="nav-item active"><span class="nav-icon">🏠</span><span class="nav-label">ホーム</span></button>
-  <button class="nav-item"><span class="nav-icon">⚙️</span><span class="nav-label">設定</span></button>
+  <button class="nav-item active" id="navHome"><span class="nav-icon">🏠</span><span class="nav-label">ホーム</span></button>
+  <button class="nav-item" id="navSettings"><span class="nav-icon">⚙️</span><span class="nav-label">設定</span></button>
 </div>
 
 <script>
@@ -621,6 +756,147 @@
   }
 
   loadData();
+
+  // Tab View Navigation
+  const navHome = document.getElementById('navHome');
+  const navSettings = document.getElementById('navSettings');
+  const homeView = document.getElementById('homeView');
+  const settingsView = document.getElementById('settingsView');
+
+  navHome.addEventListener('click', () => {
+    navHome.classList.add('active');
+    navSettings.classList.remove('active');
+    homeView.style.display = 'block';
+    settingsView.style.display = 'none';
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  });
+
+  navSettings.addEventListener('click', () => {
+    navSettings.classList.add('active');
+    navHome.classList.remove('active');
+    homeView.style.display = 'none';
+    settingsView.style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  });
+
+  // Helper function to convert VAPID key
+  function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding)
+      .replace(/\-/g, '+')
+      .replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  }
+
+  // Check current subscription status
+  async function checkPushSubscription(reg) {
+    const toggle = document.getElementById('pushToggle');
+    const statusMsg = document.getElementById('pushStatusMsg');
+    try {
+      const subscription = await reg.pushManager.getSubscription();
+      if (subscription) {
+        toggle.checked = true;
+        statusMsg.textContent = '通知は有効です。配信や動画が投稿されたらお知らせします。';
+      } else {
+        toggle.checked = false;
+        statusMsg.textContent = '通知は現在オフになっています。';
+      }
+    } catch (err) {
+      console.error('Error checking push subscription:', err);
+      statusMsg.textContent = '通知ステータスの確認中にエラーが発生しました。';
+    }
+  }
+
+  // Initialize PWA features
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', async () => {
+      try {
+        const reg = await navigator.serviceWorker.register('/sw.js');
+        console.log('ServiceWorker registered with scope:', reg.scope);
+        
+        // Check push subscription
+        await checkPushSubscription(reg);
+        
+        // Set up toggle listener
+        const toggle = document.getElementById('pushToggle');
+        const statusMsg = document.getElementById('pushStatusMsg');
+        
+        toggle.addEventListener('change', async () => {
+          if (Notification.permission === 'denied') {
+            statusMsg.textContent = '通知権限が拒否されています。ブラウザの設定から通知を許可してください。';
+            toggle.checked = false;
+            return;
+          }
+          
+          if (toggle.checked) {
+            statusMsg.textContent = '通知を設定中...';
+            try {
+              // Get VAPID public key from backend
+              const keyRes = await fetch('/api/subscribe');
+              const keyData = await keyRes.json();
+              
+              if (!keyData.publicKey) {
+                throw new Error('VAPID public key not found');
+              }
+              
+              // Subscribe
+              const subscription = await reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(keyData.publicKey)
+              });
+              
+              // Register subscription on backend
+              const saveRes = await fetch('/api/subscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(subscription)
+              });
+              
+              if (saveRes.ok) {
+                statusMsg.textContent = '通知を受け取れるようになりました！';
+              } else {
+                throw new Error('Failed to save subscription on backend');
+              }
+            } catch (err) {
+              console.error('Subscription registration failed:', err);
+              statusMsg.textContent = '通知の設定に失敗しました。';
+              toggle.checked = false;
+            }
+          } else {
+            statusMsg.textContent = '通知をオフに設定中...';
+            try {
+              const subscription = await reg.pushManager.getSubscription();
+              if (subscription) {
+                await subscription.unsubscribe();
+                statusMsg.textContent = '通知をオフにしました。';
+              }
+            } catch (err) {
+              console.error('Unsubscription failed:', err);
+              statusMsg.textContent = '通知の解除中にエラーが発生しました。';
+              toggle.checked = true;
+            }
+          }
+        });
+      } catch (err) {
+        console.error('ServiceWorker registration failed:', err);
+      }
+    });
+  } else {
+    document.getElementById('pushStatusMsg').textContent = 'お使いのブラウザはプッシュ通知に対応していません。';
+    document.getElementById('pushToggle').disabled = true;
+  }
+
+  // iOS-specific UI checks
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+  if (isIOS && !isStandalone) {
+    document.getElementById('iosInstallCard').style.display = 'block';
+  }
 </script>
 </body>
 </html>

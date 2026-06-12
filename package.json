@@ -5,5 +5,8 @@
   "description": "れむたろす配信サポートアプリ",
   "scripts": {
     "dev": "vercel dev"
+  },
+  "dependencies": {
+    "web-push": "^3.6.0"
   }
 }
