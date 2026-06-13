@@ -407,6 +407,74 @@
     .ios-install-steps li {
       margin-bottom: 6px;
     }
+    
+    /* Preference checklist styling */
+    .preference-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 14px;
+      margin-bottom: 20px;
+    }
+    .preference-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+      cursor: pointer;
+      background: rgba(255, 255, 255, 0.02);
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      transition: all 0.2s;
+      user-select: none;
+    }
+    .preference-item:hover {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(167, 139, 250, 0.15);
+    }
+    .preference-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .pref-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .save-pref-btn {
+      flex: 1;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .save-pref-btn:active {
+      transform: scale(0.98);
+    }
+    .test-push-btn {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+    .test-push-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
   </style>
 </head>
 <body>
@@ -480,6 +548,43 @@
         <li>メニューから「<strong>ホーム画面に追加</strong>」を選択します。</li>
         <li>追加されたホーム画面のアイコンからアプリを起動し、この「設定」タブで通知を有効にしてください。</li>
       </ol>
+    </div>
+    
+    <div class="settings-card" id="notificationPreferencesCard" style="display: none; animation: fadeIn 0.3s ease-out;">
+      <h3>📋 通知カテゴリ設定</h3>
+      <p>通知を受け取りたい更新情報にチェックを入れてください。</p>
+      <div id="subCountMsg" style="font-size: 12px; color: var(--accent); font-weight: 700; margin-bottom: 12px;">現在：6種類購読中</div>
+      <div class="preference-list">
+        <label class="preference-item">
+          <input type="checkbox" id="pref_youtube_live" checked>
+          <span>YouTube 配信通知</span>
+        </label>
+        <label class="preference-item">
+          <input type="checkbox" id="pref_youtube_video" checked>
+          <span>YouTube 動画通知</span>
+        </label>
+        <label class="preference-item">
+          <input type="checkbox" id="pref_twitch_live" checked>
+          <span>Twitch 配信通知</span>
+        </label>
+        <label class="preference-item">
+          <input type="checkbox" id="pref_twitch_video" checked>
+          <span>Twitch アーカイブ通知</span>
+        </label>
+        <label class="preference-item">
+          <input type="checkbox" id="pref_tiktok_live" checked>
+          <span>TikTok 配信通知</span>
+        </label>
+        <label class="preference-item">
+          <input type="checkbox" id="pref_tiktok_video" checked>
+          <span>TikTok 動画通知</span>
+        </label>
+      </div>
+      <div class="pref-actions">
+        <button class="save-pref-btn" id="savePreferencesBtn">通知設定を保存</button>
+        <button class="test-push-btn" id="testPushBtn">通知テスト</button>
+      </div>
+      <div id="prefStatusMsg" class="settings-status-msg"></div>
     </div>
     
     <div class="settings-card">
@@ -797,19 +902,53 @@
   async function checkPushSubscription(reg) {
     const toggle = document.getElementById('pushToggle');
     const statusMsg = document.getElementById('pushStatusMsg');
+    const prefCard = document.getElementById('notificationPreferencesCard');
     try {
       const subscription = await reg.pushManager.getSubscription();
       if (subscription) {
         toggle.checked = true;
         statusMsg.textContent = '通知は有効です。配信や動画が投稿されたらお知らせします。';
+        prefCard.style.display = 'block';
       } else {
         toggle.checked = false;
         statusMsg.textContent = '通知は現在オフになっています。';
+        prefCard.style.display = 'none';
       }
     } catch (err) {
       console.error('Error checking push subscription:', err);
       statusMsg.textContent = '通知ステータスの確認中にエラーが発生しました。';
     }
+  }
+
+  // Preference keys configuration
+  const PREF_KEYS = ['youtube_live', 'youtube_video', 'twitch_live', 'twitch_video', 'tiktok_live', 'tiktok_video'];
+  
+  function getLocalPreferences() {
+    const prefs = {};
+    PREF_KEYS.forEach(key => {
+      const stored = localStorage.getItem(`pref_${key}`);
+      prefs[key] = stored === null ? true : stored === 'true';
+    });
+    return prefs;
+  }
+  
+  function saveLocalPreferences(prefs) {
+    Object.keys(prefs).forEach(key => {
+      localStorage.setItem(`pref_${key}`, prefs[key]);
+    });
+  }
+  
+  function updateCheckboxUI(prefs) {
+    PREF_KEYS.forEach(key => {
+      const el = document.getElementById(`pref_${key}`);
+      if (el) el.checked = prefs[key];
+    });
+    updateSubCount(prefs);
+  }
+  
+  function updateSubCount(prefs) {
+    const activeCount = Object.values(prefs).filter(Boolean).length;
+    document.getElementById('subCountMsg').textContent = `現在：${activeCount}種類購読中`;
   }
 
   // Initialize PWA features
@@ -819,12 +958,31 @@
         const reg = await navigator.serviceWorker.register('/sw.js');
         console.log('ServiceWorker registered with scope:', reg.scope);
         
+        // Initialize preferences from localStorage
+        const initialPrefs = getLocalPreferences();
+        updateCheckboxUI(initialPrefs);
+        
+        // Update checkbox count labels on change
+        PREF_KEYS.forEach(key => {
+          const el = document.getElementById(`pref_${key}`);
+          if (el) {
+            el.addEventListener('change', () => {
+              const currentPrefs = {};
+              PREF_KEYS.forEach(k => {
+                currentPrefs[k] = document.getElementById(`pref_${k}`).checked;
+              });
+              updateSubCount(currentPrefs);
+            });
+          }
+        });
+
         // Check push subscription
         await checkPushSubscription(reg);
         
         // Set up toggle listener
         const toggle = document.getElementById('pushToggle');
         const statusMsg = document.getElementById('pushStatusMsg');
+        const prefCard = document.getElementById('notificationPreferencesCard');
         
         toggle.addEventListener('change', async () => {
           if (Notification.permission === 'denied') {
@@ -850,15 +1008,19 @@
                 applicationServerKey: urlBase64ToUint8Array(keyData.publicKey)
               });
               
-              // Register subscription on backend
+              // Register subscription on backend with preferences
               const saveRes = await fetch('/api/subscribe', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(subscription)
+                body: JSON.stringify({
+                  subscription: subscription,
+                  preferences: getLocalPreferences()
+                })
               });
               
               if (saveRes.ok) {
                 statusMsg.textContent = '通知を受け取れるようになりました！';
+                prefCard.style.display = 'block';
               } else {
                 throw new Error('Failed to save subscription on backend');
               }
@@ -866,6 +1028,7 @@
               console.error('Subscription registration failed:', err);
               statusMsg.textContent = '通知の設定に失敗しました。';
               toggle.checked = false;
+              prefCard.style.display = 'none';
             }
           } else {
             statusMsg.textContent = '通知をオフに設定中...';
@@ -874,6 +1037,7 @@
               if (subscription) {
                 await subscription.unsubscribe();
                 statusMsg.textContent = '通知をオフにしました。';
+                prefCard.style.display = 'none';
               }
             } catch (err) {
               console.error('Unsubscription failed:', err);
@@ -882,6 +1046,96 @@
             }
           }
         });
+
+        // Set up save preferences listener
+        const savePrefsBtn = document.getElementById('savePreferencesBtn');
+        const prefStatusMsg = document.getElementById('prefStatusMsg');
+        
+        savePrefsBtn.addEventListener('click', async () => {
+          const currentPrefs = {};
+          PREF_KEYS.forEach(key => {
+            currentPrefs[key] = document.getElementById(`pref_${key}`).checked;
+          });
+          
+          const activeCount = Object.values(currentPrefs).filter(Boolean).length;
+          if (activeCount === 0) {
+            const ok = confirm('すべての通知カテゴリがオフになっています。通知が一切届かなくなりますが、保存してもよろしいですか？');
+            if (!ok) return;
+          }
+          
+          savePrefsBtn.disabled = true;
+          prefStatusMsg.textContent = '通知設定を保存中...';
+          
+          try {
+            saveLocalPreferences(currentPrefs);
+            updateSubCount(currentPrefs);
+            
+            // Sync preferences to backend if subscription is active
+            const subscription = await reg.pushManager.getSubscription();
+            if (subscription) {
+              const res = await fetch('/api/subscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  subscription: subscription,
+                  preferences: currentPrefs
+                })
+              });
+              
+              if (res.ok) {
+                prefStatusMsg.textContent = '通知設定を保存しました！';
+              } else {
+                throw new Error('Failed to sync preferences to backend');
+              }
+            } else {
+              prefStatusMsg.textContent = '通知設定を保存しました（通知はオフのままです）。';
+            }
+          } catch (err) {
+            console.error('Preferences save failed:', err);
+            prefStatusMsg.textContent = '設定の保存に失敗しました。';
+          } finally {
+            savePrefsBtn.disabled = false;
+            setTimeout(() => { prefStatusMsg.textContent = ''; }, 3000);
+          }
+        });
+
+        // Set up test push button listener
+        const testPushBtn = document.getElementById('testPushBtn');
+        testPushBtn.addEventListener('click', async () => {
+          const subscription = await reg.pushManager.getSubscription();
+          if (!subscription) {
+            alert('通知が無効です。まず通知を受け取るトグルをオンにしてください。');
+            return;
+          }
+          
+          testPushBtn.disabled = true;
+          prefStatusMsg.textContent = 'テスト通知を送信中...';
+          
+          try {
+            const res = await fetch('/api/subscribe', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'test',
+                subscription: subscription
+              })
+            });
+            
+            if (res.ok) {
+              prefStatusMsg.textContent = 'テスト通知を送信しました！数秒以内に届きます。';
+            } else {
+              const errData = await res.json().catch(() => ({}));
+              throw new Error(errData.error || 'Server error');
+            }
+          } catch (err) {
+            console.error('Test push request failed:', err);
+            prefStatusMsg.textContent = `テスト送信に失敗しました: ${err.message}`;
+          } finally {
+            testPushBtn.disabled = false;
+            setTimeout(() => { prefStatusMsg.textContent = ''; }, 4000);
+          }
+        });
+
       } catch (err) {
         console.error('ServiceWorker registration failed:', err);
       }

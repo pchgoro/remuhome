@@ -140,6 +140,7 @@ export default async function handler(req, res) {
   if (ytData && !ytData.error) {
     if (ytLiveId && ytLiveId !== lastCheckedState.youtube_live) {
       notifications.push({
+        type: 'youtube_live',
         title: '🔴 れむたろす YouTube配信開始！',
         body: ytData.live[0].snippet?.title || 'ライブ配信がスタートしました！',
         url: `https://www.youtube.com/watch?v=${ytLiveId}`
@@ -152,6 +153,7 @@ export default async function handler(req, res) {
   if (twData && !twData.error) {
     if (twLiveId && twLiveId !== lastCheckedState.twitch_live) {
       notifications.push({
+        type: 'twitch_live',
         title: '🔴 れむたろす Twitch配信開始！',
         body: twData.live[0].title || 'ライブ配信がスタートしました！',
         url: 'https://twitch.tv/remutarosu'
@@ -164,6 +166,7 @@ export default async function handler(req, res) {
   if (ytData && !ytData.error) {
     if (ytVideoId && ytVideoId !== lastCheckedState.youtube_video) {
       notifications.push({
+        type: 'youtube_video',
         title: '▶ れむたろす 新しいYouTube動画！',
         body: ytVideoTitle,
         url: ytVideoUrl
@@ -176,6 +179,7 @@ export default async function handler(req, res) {
   if (twData && !twData.error) {
     if (twVideoId && twVideoId !== lastCheckedState.twitch_video) {
       notifications.push({
+        type: 'twitch_video',
         title: '🎮 れむたろす Twitchアーカイブ公開！',
         body: twVideoTitle,
         url: twVideoUrl
@@ -188,6 +192,7 @@ export default async function handler(req, res) {
   if (tkData && !tkData.error) {
     if (tkVideoUrl && tkVideoUrl !== lastCheckedState.tiktok_video) {
       notifications.push({
+        type: 'tiktok_video',
         title: '♪ れむたろす 新しいTikTok動画！',
         body: tkVideoTitle,
         url: tkVideoUrl
@@ -219,9 +224,26 @@ export default async function handler(req, res) {
     for (const notification of notifications) {
       const payloadString = JSON.stringify(notification);
       subscriptions.forEach(sub => {
+        // Extract subscription and preferences (handle both old and new formats)
+        const rawSub = sub.subscription || sub;
+        const preferences = sub.preferences || {
+          youtube_live: true,
+          youtube_video: true,
+          twitch_live: true,
+          twitch_video: true,
+          tiktok_live: true,
+          tiktok_video: true
+        };
+
+        // Filter based on user preferences
+        if (notification.type && !preferences[notification.type]) {
+          return; // Skip this subscription
+        }
+
         pushPromises.push(
-          webpush.sendNotification(sub, payloadString).catch(err => {
+          webpush.sendNotification(rawSub, payloadString).catch(err => {
             if (err.statusCode === 410 || err.statusCode === 404) {
+              // Store the exact string that was read from Redis to clean it up correctly
               expiredSubs.push(JSON.stringify(sub));
             } else {
               console.error('Push notification delivery error:', err.message);

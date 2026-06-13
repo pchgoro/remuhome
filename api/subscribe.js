@@ -40,21 +40,68 @@ async function writeCache(key, value) {
   }
 }
 
-async function addSubscription(sub) {
+async function addOrUpdateSubscription(subData) {
   const cache = getCacheConfig();
   if (!cache.enabled) return;
   try {
-    // SADD command in Redis to store subscriptions uniquely
+    // Fetch existing subscriptions
+    const res = await fetch(cache.url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${cache.token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(['SMEMBERS', 'subscriptions'])
+    });
+    const data = await res.json();
+    const members = data.result || [];
+    
+    // Find target endpoint from the incoming subData
+    const targetEndpoint = subData.subscription?.endpoint || subData.endpoint;
+    if (!targetEndpoint) return;
+    
+    const toRemove = [];
+    
+    for (const memberStr of members) {
+      try {
+        const parsed = JSON.parse(memberStr);
+        const endpoint = parsed.endpoint || parsed.subscription?.endpoint;
+        if (endpoint === targetEndpoint) {
+          toRemove.push(memberStr);
+        }
+      } catch (e) {
+        // Remove invalid entries
+        toRemove.push(memberStr);
+      }
+    }
+    
+    // SREM matching elements
+    if (toRemove.length > 0) {
+      await Promise.all(
+        toRemove.map(memberStr => 
+          fetch(cache.url, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${cache.token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(['SREM', 'subscriptions', memberStr])
+          })
+        )
+      );
+    }
+    
+    // SADD the new subscription configuration
     await fetch(cache.url, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${cache.token}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(['SADD', 'subscriptions', JSON.stringify(sub)])
+      body: JSON.stringify(['SADD', 'subscriptions', JSON.stringify(subData)])
     });
   } catch (err) {
-    console.log('Redis subscription addition failed:', err.message);
+    console.log('Redis subscription addition/update failed:', err.message);
   }
 }
 
@@ -95,11 +142,39 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    const sub = req.body;
+    const subData = req.body;
+    
+    // Support test push delivery
+    if (subData && subData.action === 'test') {
+      const subscription = subData.subscription;
+      if (!subscription || !subscription.endpoint) {
+        return res.status(400).json({ error: 'Invalid subscription for testing' });
+      }
+      try {
+        webpush.setVapidDetails(
+          process.env.VAPID_SUBJECT || 'mailto:your-email@example.com',
+          keys.publicKey,
+          keys.privateKey
+        );
+        await webpush.sendNotification(subscription, JSON.stringify({
+          title: '🐈⚡ 通知テスト成功！',
+          body: 'たろみんサポートアプリからのプッシュ通知が正常に届きました。',
+          url: '/'
+        }));
+        return res.status(200).json({ success: true });
+      } catch (err) {
+        return res.status(500).json({ error: `Push delivery failed: ${err.message}` });
+      }
+    }
+
+    // Regular register subscription logic
+    const sub = subData?.subscription || subData;
     if (!sub || !sub.endpoint) {
       return res.status(400).json({ error: 'Invalid subscription' });
     }
-    await addSubscription(sub);
+    
+    // Save to Redis (using subData directly to preserve preferences if provided)
+    await addOrUpdateSubscription(subData);
     return res.status(200).json({ success: true });
   }
 
