@@ -719,6 +719,7 @@
   async function loadData() {
     let youtubeLive = null;
     let twitchLive = null;
+    let tiktokLive = null;
     const streamItems = [];   // 最近の配信（YTアーカイブ＋TWアーカイブ）
     const ytVideoItems = [];  // YouTubeの通常動画
     const twClipItems = [];   // Twitchのクリップ
@@ -820,6 +821,17 @@
     try {
       const tiktokData = await fetch('/api/tiktok').then(r => r.json());
 
+      if (tiktokData.live && tiktokData.live.length > 0) {
+        const l = tiktokData.live[0];
+        tiktokLive = {
+          title: l.title || 'TikTok配信中',
+          url: l.url || 'https://www.tiktok.com/@remutarosu1/live',
+          platform: 'tiktok',
+          date: new Date().toISOString(),
+          thumbnail: l.thumbnail || null
+        };
+      }
+
       (tiktokData.videos || []).forEach(v => {
         tiktokItems.push({
           title: v.title || 'TikTok動画',
@@ -836,7 +848,7 @@
     }
 
     // ライブバナー（複数対応）
-    const liveList = [twitchLive, youtubeLive].filter(Boolean);
+    const liveList = [twitchLive, youtubeLive, tiktokLive].filter(Boolean);
     const bannersEl = document.getElementById('liveBanners');
     bannersEl.innerHTML = '';
     liveList.forEach(liveData => {
@@ -846,7 +858,9 @@
       banner.target = '_blank';
       banner.rel = 'noopener';
       banner.style.marginBottom = '12px';
-      const label = liveData.platform === 'twitch' ? 'Twitch' : 'YouTube';
+      
+      const labels = { twitch: 'Twitch', youtube: 'YouTube', tiktok: 'TikTok' };
+      const label = labels[liveData.platform] || liveData.platform;
       const meta = liveData.viewers ? `👥 ${Number(liveData.viewers).toLocaleString()}人` : '';
       banner.innerHTML = `
         <div class="live-banner-main">
