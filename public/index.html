@@ -603,6 +603,28 @@
       <div id="prefStatusMsg" class="settings-status-msg"></div>
     </div>
     
+    <!-- 管理者用手動動画管理カード -->
+    <div class="settings-card">
+      <h3>🎬 TikTok手動動画管理 (管理者専用)</h3>
+      <p>非公式APIに問題が発生した場合や、即時に動画を公開したい場合に手動で動画を追加・削除できます。</p>
+      
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
+        <input type="text" id="manualVideoUrl" placeholder="TikTok動画のURL (https://www.tiktok.com/...)" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: var(--text); font-family: inherit; font-size: 13px;">
+        <input type="text" id="manualVideoTitle" placeholder="タイトル (空欄の場合は自動取得)" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: var(--text); font-family: inherit; font-size: 13px;">
+        <input type="password" id="manualAdminPassword" placeholder="管理者パスワード (CRON_SECRET)" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: var(--text); font-family: inherit; font-size: 13px;">
+        <button id="addManualVideoBtn" class="save-pref-btn" style="margin-top: 4px;">動画を追加する</button>
+      </div>
+      
+      <div id="manualAdminStatusMsg" class="settings-status-msg" style="margin-bottom: 12px;"></div>
+      
+      <div style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px;">
+        <h4 style="font-size: 13px; font-weight: bold; margin-bottom: 8px; color: var(--text);">登録済みの手動追加動画</h4>
+        <div id="manualVideosList" style="display: flex; flex-direction: column; gap: 8px; max-height: 150px; overflow-y: auto;">
+          <div style="color: var(--muted); font-size: 12px; text-align: center; padding: 10px;">パスワードを入力すると動画一覧が表示されます</div>
+        </div>
+      </div>
+    </div>
+
     <div class="settings-card">
       <h3>ℹ️ アプリ情報</h3>
       <p style="margin-bottom: 6px; font-weight: 600;">たろみんサポートアプリ β版</p>
@@ -1187,6 +1209,155 @@
       localStorage.setItem('ios_banner_closed', 'true');
     });
   }
+
+  // --- TikTok Manual Video Override Management ---
+  async function loadManualVideosList() {
+    const password = document.getElementById('manualAdminPassword').value || localStorage.getItem('admin_pass') || '';
+    const listEl = document.getElementById('manualVideosList');
+    
+    if (!password) {
+      listEl.innerHTML = '<div style="color: var(--muted); font-size: 12px; text-align: center; padding: 10px;">パスワードを入力すると動画一覧が表示されます</div>';
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/tiktok', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'list_manual', password })
+      });
+      
+      if (res.ok) {
+        localStorage.setItem('admin_pass', password);
+        const data = await res.json();
+        const list = data.videos || [];
+        if (list.length === 0) {
+          listEl.innerHTML = '<div style="color: var(--muted); font-size: 12px; text-align: center; padding: 10px;">手動追加された動画はありません</div>';
+          return;
+        }
+        
+        listEl.innerHTML = '';
+        list.forEach(v => {
+          const row = document.createElement('div');
+          row.style.display = 'flex';
+          row.style.alignItems = 'center';
+          row.style.justifyContent = 'space-between';
+          row.style.background = 'rgba(255,255,255,0.02)';
+          row.style.border = '1px solid rgba(255,255,255,0.04)';
+          row.style.borderRadius = '6px';
+          row.style.padding = '8px 10px';
+          row.style.fontSize = '12px';
+          row.style.marginBottom = '4px';
+          
+          row.innerHTML = `
+            <div style="flex: 1; min-width: 0; padding-right: 8px;">
+              <div style="font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text);">${v.title}</div>
+              <div style="color: var(--muted); font-size: 10px; margin-top: 2px;">ID: ${v.id}</div>
+            </div>
+            <button class="delete-manual-btn" data-id="${v.id}" style="background: rgba(248,113,113,0.15); border: 1px solid rgba(248,113,113,0.3); color: var(--live); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; font-family: inherit; transition: all 0.2s; flex-shrink: 0;">削除</button>
+          `;
+          listEl.appendChild(row);
+        });
+        
+        listEl.querySelectorAll('.delete-manual-btn').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            const videoId = e.target.getAttribute('data-id');
+            if (confirm(`動画 (ID: ${videoId}) を削除しますか？`)) {
+              e.target.disabled = true;
+              e.target.textContent = '中...';
+              try {
+                const delRes = await fetch('/api/tiktok', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ action: 'delete_manual', id: videoId, password })
+                });
+                if (delRes.ok) {
+                  loadManualVideosList();
+                  loadData(); // reload main timeline
+                } else {
+                  const err = await delRes.json();
+                  alert(`削除に失敗しました: ${err.error || '不明なエラー'}`);
+                  e.target.disabled = false;
+                  e.target.textContent = '削除';
+                }
+              } catch (err) {
+                alert(`エラーが発生しました: ${err.message}`);
+                e.target.disabled = false;
+                e.target.textContent = '削除';
+              }
+            }
+          });
+        });
+      } else {
+        const err = await res.json().catch(() => ({}));
+        listEl.innerHTML = `<div style="color: var(--live); font-size: 12px; text-align: center; padding: 10px;">エラー: ${err.error || '認証失敗'}</div>`;
+      }
+    } catch (err) {
+      listEl.innerHTML = `<div style="color: var(--live); font-size: 12px; text-align: center; padding: 10px;">通信エラー: ${err.message}</div>`;
+    }
+  }
+
+  // Pre-fill saved admin password if exists
+  const storedPass = localStorage.getItem('admin_pass');
+  if (storedPass) {
+    document.getElementById('manualAdminPassword').value = storedPass;
+    loadManualVideosList();
+  }
+
+  // Reload list on password input focusout/change
+  document.getElementById('manualAdminPassword').addEventListener('change', () => {
+    loadManualVideosList();
+  });
+
+  // Handle manual video addition
+  const addBtn = document.getElementById('addManualVideoBtn');
+  const addUrlInput = document.getElementById('manualVideoUrl');
+  const addTitleInput = document.getElementById('manualVideoTitle');
+  const addPassInput = document.getElementById('manualAdminPassword');
+  const adminStatusMsg = document.getElementById('manualAdminStatusMsg');
+
+  addBtn.addEventListener('click', async () => {
+    const url = addUrlInput.value.trim();
+    const title = addTitleInput.value.trim();
+    const password = addPassInput.value.trim();
+
+    if (!url || !password) {
+      adminStatusMsg.textContent = 'URLとパスワードは必須項目です。';
+      return;
+    }
+
+    addBtn.disabled = true;
+    adminStatusMsg.textContent = '動画を追加中...';
+
+    try {
+      const res = await fetch('/api/tiktok', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'add_manual', url, title, password })
+      });
+
+      if (res.ok) {
+        addUrlInput.value = '';
+        addTitleInput.value = '';
+        adminStatusMsg.textContent = '手動動画を追加しました！';
+        loadManualVideosList();
+        loadData(); // reload timeline
+      } else {
+        const err = await res.json().catch(() => ({}));
+        adminStatusMsg.textContent = `追加に失敗しました: ${err.error || '不明なエラー'}`;
+      }
+    } catch (err) {
+      adminStatusMsg.textContent = `エラーが発生しました: ${err.message}`;
+    } finally {
+      addBtn.disabled = false;
+      setTimeout(() => { adminStatusMsg.textContent = ''; }, 4000);
+    }
+  });
+
+  // Reload lists when settings tab is opened
+  navSettings.addEventListener('click', () => {
+    loadManualVideosList();
+  });
 </script>
 </body>
 </html>

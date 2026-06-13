@@ -99,6 +99,7 @@ export default async function handler(req, res) {
   const twVideoTitle = twData?.archives?.[0]?.title || '';
   const twVideoUrl = twData?.archives?.[0]?.url || 'https://twitch.tv/remutarosu';
 
+  const tkLiveId = tkData?.live?.[0]?.roomId || null;
   const tkVideoUrl = tkData?.videos?.[0]?.url || null;
   const tkVideoTitle = tkData?.videos?.[0]?.title || '';
 
@@ -118,6 +119,7 @@ export default async function handler(req, res) {
     youtube_video: lastCheckedState?.youtube_video ?? null,
     twitch_live: lastCheckedState?.twitch_live ?? null,
     twitch_video: lastCheckedState?.twitch_video ?? null,
+    tiktok_live: lastCheckedState?.tiktok_live ?? null,
     tiktok_video: lastCheckedState?.tiktok_video ?? null
   };
 
@@ -128,6 +130,7 @@ export default async function handler(req, res) {
       youtube_video: ytVideoId,
       twitch_live: twLiveId,
       twitch_video: twVideoId,
+      tiktok_live: tkLiveId,
       tiktok_video: tkVideoUrl
     };
     await runRedisCommand(['SET', 'last_checked', JSON.stringify(initialState)]);
@@ -186,6 +189,19 @@ export default async function handler(req, res) {
       });
     }
     newState.twitch_video = twVideoId;
+  }
+
+  // Check TikTok Live
+  if (tkData && !tkData.error) {
+    if (tkLiveId && tkLiveId !== lastCheckedState.tiktok_live) {
+      notifications.push({
+        type: 'tiktok_live',
+        title: '🔴 れむたろす TikTok配信開始！',
+        body: tkData.live[0].title || 'TikTokでライブ配信がスタートしました！',
+        url: 'https://www.tiktok.com/@remutarosu1/live'
+      });
+    }
+    newState.tiktok_live = tkLiveId;
   }
 
   // Check TikTok Video
