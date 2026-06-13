@@ -39,13 +39,43 @@ async function getSubscriptions() {
   }).filter(Boolean);
 }
 
+function verifyCronAuth(req, res) {
+  const expectedSecret = process.env.CRON_SECRET?.trim();
+  if (!expectedSecret) {
+    console.warn('CRON_SECRET is not set; cron-check is unprotected');
+    return true;
+  }
+
+  const cronAuth = req.headers.authorization;
+  if (!cronAuth || !cronAuth.toLowerCase().startsWith('bearer ')) {
+    res.status(401).json({ error: 'Unauthorized', hint: 'Authorization: Bearer <CRON_SECRET>' });
+    return false;
+  }
+
+  const token = cronAuth.slice(7).trim();
+  if (token !== expectedSecret) {
+    res.status(401).json({ error: 'Unauthorized', hint: 'Invalid CRON_SECRET' });
+    return false;
+  }
+
+  return true;
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
 
-  // Verify cron secret if configured in Vercel to protect the endpoint
-  const cronAuth = req.headers.authorization;
-  if (process.env.CRON_SECRET && cronAuth !== `Bearer ${process.env.CRON_SECRET}`) {
-    return res.status(401).json({ error: 'Unauthorized' });
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  if (req.method !== 'GET' && req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  if (!verifyCronAuth(req, res)) {
+    return;
   }
 
   const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:3000';
@@ -203,16 +233,21 @@ export default async function handler(req, res) {
 
     await Promise.all(pushPromises);
 
+    const uniqueExpired = [...new Set(expiredSubs)];
+
     // Clean up expired subscriptions
-    if (expiredSubs.length > 0) {
-      const uniqueExpired = [...new Set(expiredSubs)];
+    if (uniqueExpired.length > 0) {
       console.log(`Removing ${uniqueExpired.length} expired subscriptions...`);
       await Promise.all(
         uniqueExpired.map(subStr => runRedisCommand(['SREM', 'subscriptions', subStr]))
       );
     }
 
-    return res.status(200).json({ status: 'notifications_sent', count: notifications.length, sentTo: subscriptions.length - uniqueExpired.length });
+    return res.status(200).json({
+      status: 'notifications_sent',
+      count: notifications.length,
+      sentTo: subscriptions.length - uniqueExpired.length
+    });
   }
 
   return res.status(200).json({ status: 'no_updates', state: newState });
