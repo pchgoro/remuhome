@@ -1,4 +1,4 @@
-const CACHE_KEY = 'tiktok_data';
+const CACHE_KEY = 'tiktok_data_v2';
 
 const baseVideos = [
   {
