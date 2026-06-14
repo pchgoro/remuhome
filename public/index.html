@@ -475,6 +475,85 @@
       background: rgba(255, 255, 255, 0.1);
       border-color: rgba(255, 255, 255, 0.2);
     }
+
+    /* Schedule specific styling */
+    .schedule-card {
+      background: var(--card);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      animation: fadeIn 0.3s ease-out;
+    }
+    .schedule-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .schedule-week {
+      font-weight: 700;
+      color: var(--accent);
+      background: rgba(167, 139, 250, 0.1);
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+    .schedule-source {
+      text-transform: uppercase;
+      font-weight: 600;
+      font-size: 10px;
+    }
+    .schedule-text {
+      font-size: 14px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      color: var(--text);
+    }
+    .schedule-image-container {
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      cursor: zoom-in;
+      background: rgba(0,0,0,0.2);
+    }
+    .schedule-image {
+      width: 100%;
+      height: auto;
+      display: block;
+      transition: transform 0.3s;
+    }
+    .schedule-image-container:hover .schedule-image {
+      transform: scale(1.02);
+    }
+    .schedule-footer {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      margin-top: 4px;
+    }
+    .schedule-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+    .schedule-link:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--accent);
+    }
   </style>
 </head>
 <body>
@@ -538,6 +617,14 @@
       このアプリはファンが制作した非公式アプリです。配信情報に誤りがある場合があります。<br>
       正確な情報は<a href="https://x.com/remutarosu" target="_blank" rel="noopener" style="color:#a78bfa;">れむたろすさんのX</a>等をご確認ください。
     </footer>
+  </div>
+
+  <!-- 配信予定ビュー -->
+  <div id="scheduleView" style="display: none; animation: fadeIn 0.3s ease-out;">
+    <div class="section-title">📅 今週の配信予定</div>
+    <div id="scheduleContainer">
+      <div class="loading">読み込み中...</div>
+    </div>
   </div>
 
   <div id="settingsView" style="display: none; animation: fadeIn 0.3s ease-out;">
@@ -625,6 +712,29 @@
       </div>
     </div>
 
+    <!-- 管理者用手動配信予定管理カード -->
+    <div class="settings-card">
+      <h3>📅 配信予定手動管理 (管理者専用)</h3>
+      <p>配信告知の自動取得が失敗した場合や、即座に予定を登録・修正したい場合に手動で配信予定を追加・削除できます。</p>
+      
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
+        <input type="text" id="manualSchedImage" placeholder="配信予定画像のURL (https://...)" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: var(--text); font-family: inherit; font-size: 13px;">
+        <input type="text" id="manualSchedPostUrl" placeholder="投稿のURL (https://...)" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: var(--text); font-family: inherit; font-size: 13px;">
+        <input type="text" id="manualSchedText" placeholder="本文 (例: 今週の配信スケジュールです！)" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: var(--text); font-family: inherit; font-size: 13px;">
+        <input type="text" id="manualSchedWeek" placeholder="対象週 (YYYY-MM-DD、空欄なら今日の日付)" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: var(--text); font-family: inherit; font-size: 13px;">
+        <button id="addManualSchedBtn" class="save-pref-btn" style="margin-top: 4px;">配信予定を追加する</button>
+      </div>
+      
+      <div id="manualSchedAdminStatusMsg" class="settings-status-msg" style="margin-bottom: 12px;"></div>
+      
+      <div style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px;">
+        <h4 style="font-size: 13px; font-weight: bold; margin-bottom: 8px; color: var(--text);">登録済みの配信予定</h4>
+        <div id="manualSchedList" style="display: flex; flex-direction: column; gap: 8px; max-height: 150px; overflow-y: auto;">
+          <div style="color: var(--muted); font-size: 12px; text-align: center; padding: 10px;">パスワードを入力すると配信予定一覧が表示されます</div>
+        </div>
+      </div>
+    </div>
+
     <div class="settings-card">
       <h3>ℹ️ アプリ情報</h3>
       <p style="margin-bottom: 6px; font-weight: 600;">たろみんサポートアプリ β版</p>
@@ -640,7 +750,13 @@
 
 <div class="bottom-nav">
   <button class="nav-item active" id="navHome"><span class="nav-icon">🏠</span><span class="nav-label">ホーム</span></button>
+  <button class="nav-item" id="navSchedule"><span class="nav-icon">📅</span><span class="nav-label">配信予定</span></button>
   <button class="nav-item" id="navSettings"><span class="nav-icon">⚙️</span><span class="nav-label">設定</span></button>
+</div>
+
+<!-- Lightbox Modal -->
+<div id="lightboxModal" style="display: none; position: fixed; z-index: 1000; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); align-items: center; justify-content: center; cursor: zoom-out;">
+  <img id="lightboxImg" src="" style="max-width: 95%; max-height: 95%; object-fit: contain; border-radius: 8px; box-shadow: 0 0 30px rgba(0,0,0,0.5); transition: transform 0.2s ease-out;">
 </div>
 
 <script>
@@ -916,25 +1032,112 @@
 
   // Tab View Navigation
   const navHome = document.getElementById('navHome');
+  const navSchedule = document.getElementById('navSchedule');
   const navSettings = document.getElementById('navSettings');
   const homeView = document.getElementById('homeView');
+  const scheduleView = document.getElementById('scheduleView');
   const settingsView = document.getElementById('settingsView');
 
-  navHome.addEventListener('click', () => {
-    navHome.classList.add('active');
-    navSettings.classList.remove('active');
-    homeView.style.display = 'block';
-    settingsView.style.display = 'none';
+  function setActiveTab(navBtn, viewEl) {
+    [navHome, navSchedule, navSettings].forEach(btn => btn?.classList.remove('active'));
+    [homeView, scheduleView, settingsView].forEach(v => {
+      if (v) v.style.display = 'none';
+    });
+    navBtn.classList.add('active');
+    viewEl.style.display = 'block';
     window.scrollTo({ top: 0, behavior: 'instant' });
+  }
+
+  navHome.addEventListener('click', () => {
+    setActiveTab(navHome, homeView);
+  });
+
+  navSchedule.addEventListener('click', () => {
+    setActiveTab(navSchedule, scheduleView);
+    loadScheduleData();
   });
 
   navSettings.addEventListener('click', () => {
-    navSettings.classList.add('active');
-    navHome.classList.remove('active');
-    homeView.style.display = 'none';
-    settingsView.style.display = 'block';
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    setActiveTab(navSettings, settingsView);
+    loadManualVideosList();
+    loadManualSchedList();
   });
+
+  // Lightbox Modal functions
+  const lightboxModal = document.getElementById('lightboxModal');
+  const lightboxImg = document.getElementById('lightboxImg');
+
+  function showLightbox(src) {
+    lightboxImg.src = src;
+    lightboxModal.style.display = 'flex';
+  }
+
+  lightboxModal.addEventListener('click', () => {
+    lightboxModal.style.display = 'none';
+    lightboxImg.src = '';
+  });
+
+  function escapeHTML(str) {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  // Load schedule data
+  async function loadScheduleData() {
+    const container = document.getElementById('scheduleContainer');
+    container.innerHTML = '<div class="loading">読み込み中...</div>';
+    
+    try {
+      const res = await fetch('/api/schedule');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const schedules = data.schedules || [];
+      
+      if (schedules.length === 0) {
+        container.innerHTML = '<div class="empty-msg">配信予定はまだ公開されていません</div>';
+        return;
+      }
+      
+      container.innerHTML = '';
+      schedules.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'schedule-card';
+        
+        const sourceNames = { bluesky: 'Bluesky', x: 'X', manual: '手動登録' };
+        const sourceName = sourceNames[item.source] || item.source;
+        
+        card.innerHTML = `
+          <div class="schedule-header">
+            <span class="schedule-week">📅 ${item.week} の予定</span>
+            <span class="schedule-source">投稿元: ${sourceName}</span>
+          </div>
+          ${item.text ? `<div class="schedule-text">${escapeHTML(item.text)}</div>` : ''}
+          <div class="schedule-image-container">
+            <img class="schedule-image" src="${item.image}" alt="配信スケジュール" loading="lazy">
+          </div>
+          <div class="schedule-footer">
+            <a href="${item.postUrl}" target="_blank" rel="noopener" class="schedule-link">
+              <span>投稿を見る</span> ↗
+            </a>
+          </div>
+        `;
+        
+        const img = card.querySelector('.schedule-image');
+        img.addEventListener('click', () => {
+          showLightbox(item.image);
+        });
+        
+        container.appendChild(card);
+      });
+    } catch (err) {
+      console.error('Failed to load schedules:', err);
+      container.innerHTML = `<div class="empty-msg" style="color: var(--live);">配信予定の取得に失敗しました: ${err.message}</div>`;
+    }
+  }
 
   // Helper function to convert VAPID key
   function urlBase64ToUint8Array(base64String) {
@@ -1224,7 +1427,7 @@
     });
   }
 
-  // --- TikTok Manual Video Override Management ---
+  // --- TikTok & Schedule Manual Override Management ---
   async function loadManualVideosList() {
     const password = document.getElementById('manualAdminPassword').value || localStorage.getItem('admin_pass') || '';
     const listEl = document.getElementById('manualVideosList');
@@ -1311,16 +1514,104 @@
     }
   }
 
+  async function loadManualSchedList() {
+    const password = document.getElementById('manualAdminPassword').value || localStorage.getItem('admin_pass') || '';
+    const listEl = document.getElementById('manualSchedList');
+    
+    if (!password) {
+      listEl.innerHTML = '<div style="color: var(--muted); font-size: 12px; text-align: center; padding: 10px;">パスワードを入力すると配信予定一覧が表示されます</div>';
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/schedule-refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'list_manual', password })
+      });
+      
+      if (res.ok) {
+        localStorage.setItem('admin_pass', password);
+        const data = await res.json();
+        const list = data.schedules || [];
+        if (list.length === 0) {
+          listEl.innerHTML = '<div style="color: var(--muted); font-size: 12px; text-align: center; padding: 10px;">手動追加された配信予定はありません</div>';
+          return;
+        }
+        
+        listEl.innerHTML = '';
+        list.forEach(v => {
+          const row = document.createElement('div');
+          row.style.display = 'flex';
+          row.style.alignItems = 'center';
+          row.style.justifyContent = 'space-between';
+          row.style.background = 'rgba(255,255,255,0.02)';
+          row.style.border = '1px solid rgba(255,255,255,0.04)';
+          row.style.borderRadius = '6px';
+          row.style.padding = '8px 10px';
+          row.style.fontSize = '12px';
+          row.style.marginBottom = '4px';
+          
+          row.innerHTML = `
+            <div style="flex: 1; min-width: 0; padding-right: 8px;">
+              <div style="font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text);">${v.week}の予定 (${v.source})</div>
+              <div style="color: var(--muted); font-size: 10px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${v.text || ''}</div>
+            </div>
+            <button class="delete-sched-btn" data-url="${v.postUrl}" style="background: rgba(248,113,113,0.15); border: 1px solid rgba(248,113,113,0.3); color: var(--live); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; font-family: inherit; transition: all 0.2s; flex-shrink: 0;">削除</button>
+          `;
+          listEl.appendChild(row);
+        });
+        
+        listEl.querySelectorAll('.delete-sched-btn').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            const postUrl = e.target.getAttribute('data-url');
+            if (confirm('この配信予定を削除しますか？')) {
+              e.target.disabled = true;
+              e.target.textContent = '中...';
+              try {
+                const delRes = await fetch('/api/schedule-refresh', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ action: 'delete_manual', postUrl, password })
+                });
+                if (delRes.ok) {
+                  loadManualSchedList();
+                  loadScheduleData();
+                } else {
+                  const err = await delRes.json();
+                  alert(`削除に失敗しました: ${err.error || '不明なエラー'}`);
+                  e.target.disabled = false;
+                  e.target.textContent = '削除';
+                }
+              } catch (err) {
+                alert(`エラーが発生しました: ${err.message}`);
+                e.target.disabled = false;
+                e.target.textContent = '削除';
+              }
+            }
+          });
+        });
+      } else {
+        const err = await res.json().catch(() => ({}));
+        listEl.innerHTML = `<div style="color: var(--live); font-size: 12px; text-align: center; padding: 10px;">エラー: ${err.error || '認証失敗'}</div>`;
+      }
+    } catch (err) {
+      listEl.innerHTML = `<div style="color: var(--live); font-size: 12px; text-align: center; padding: 10px;">通信エラー: ${err.message}</div>`;
+    }
+  }
+
   // Pre-fill saved admin password if exists
   const storedPass = localStorage.getItem('admin_pass');
   if (storedPass) {
     document.getElementById('manualAdminPassword').value = storedPass;
     loadManualVideosList();
+    loadManualSchedList();
   }
 
   // Reload list on password input focusout/change
   document.getElementById('manualAdminPassword').addEventListener('change', () => {
     loadManualVideosList();
+    loadManualSchedList();
   });
 
   // Handle manual video addition
@@ -1368,9 +1659,60 @@
     }
   });
 
+  // Handle manual schedule addition
+  const addSchedBtn = document.getElementById('addManualSchedBtn');
+  const addSchedImage = document.getElementById('manualSchedImage');
+  const addSchedPostUrl = document.getElementById('manualSchedPostUrl');
+  const addSchedText = document.getElementById('manualSchedText');
+  const addSchedWeek = document.getElementById('manualSchedWeek');
+  const schedAdminStatusMsg = document.getElementById('manualSchedAdminStatusMsg');
+
+  addSchedBtn.addEventListener('click', async () => {
+    const image = addSchedImage.value.trim();
+    const postUrl = addSchedPostUrl.value.trim();
+    const text = addSchedText.value.trim();
+    const week = addSchedWeek.value.trim();
+    const password = document.getElementById('manualAdminPassword').value.trim();
+
+    if (!image || !postUrl || !password) {
+      schedAdminStatusMsg.textContent = '画像URL、投稿URL、およびパスワードは必須項目です。';
+      return;
+    }
+
+    addSchedBtn.disabled = true;
+    schedAdminStatusMsg.textContent = '配信予定を追加中...';
+
+    try {
+      const res = await fetch('/api/schedule-refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'add_manual', week, text, image, postUrl, password })
+      });
+
+      if (res.ok) {
+        addSchedImage.value = '';
+        addSchedPostUrl.value = '';
+        addSchedText.value = '';
+        addSchedWeek.value = '';
+        schedAdminStatusMsg.textContent = '手動配信予定を追加しました！';
+        loadManualSchedList();
+        loadScheduleData();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        schedAdminStatusMsg.textContent = `追加に失敗しました: ${err.error || '不明なエラー'}`;
+      }
+    } catch (err) {
+      schedAdminStatusMsg.textContent = `エラーが発生しました: ${err.message}`;
+    } finally {
+      addSchedBtn.disabled = false;
+      setTimeout(() => { schedAdminStatusMsg.textContent = ''; }, 4000);
+    }
+  });
+
   // Reload lists when settings tab is opened
   navSettings.addEventListener('click', () => {
     loadManualVideosList();
+    loadManualSchedList();
   });
 </script>
 </body>
