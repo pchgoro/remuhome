@@ -1,21 +1,21 @@
-const CACHE_NAME = 'remuhome-cache-v2';
-const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
+const CACHE_NAME = 'remuhome-cache-v3';
+const STATIC_ASSETS = [
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
   '/apple-touch-icon.png'
 ];
 
+// インストール時：静的アセットのみ事前キャッシュ（index.htmlは除外）
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(ASSETS_TO_CACHE);
+      return cache.addAll(STATIC_ASSETS);
     }).then(() => self.skipWaiting())
   );
 });
 
+// アクティベート時：古いキャッシュを全削除
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys => {
@@ -31,19 +31,41 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  // Only handle GET requests and skip API requests
+  // GETリクエスト以外・APIリクエストはスルー
   if (event.request.method !== 'GET' || event.request.url.includes('/api/')) {
     return;
   }
-  event.respondWith(
-    caches.match(event.request).then(cachedResponse => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(event.request);
-    })
-  );
+
+  const url = new URL(event.request.url);
+  const isHTML = url.pathname === '/' || url.pathname.endsWith('.html');
+
+  if (isHTML) {
+    // index.html はネットワーク優先（network-first）
+    // 常に最新を取得してキャッシュ更新。オフライン時のみキャッシュにフォールバック
+    event.respondWith(
+      fetch(event.request)
+        .then(networkResponse => {
+          const cloned = networkResponse.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, cloned));
+          return networkResponse;
+        })
+        .catch(() => caches.match(event.request))
+    );
+  } else {
+    // 静的アセット（画像等）はキャッシュ優先
+    event.respondWith(
+      caches.match(event.request).then(cachedResponse => {
+        if (cachedResponse) return cachedResponse;
+        return fetch(event.request).then(networkResponse => {
+          const cloned = networkResponse.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, cloned));
+          return networkResponse;
+        });
+      })
+    );
+  }
 });
+
 
 // Push Notification Listener
 self.addEventListener('push', event => {
