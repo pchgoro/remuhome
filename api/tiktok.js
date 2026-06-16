@@ -160,15 +160,16 @@ async function fetchVideos() {
 }
 
 async function fetchLiveStatus() {
-  const url = 'https://www.tiktok.com/@remutarosu1';
-  const res = await fetch(url, {
+  // Step 1: プロフィールページから roomId を取得
+  const profileUrl = 'https://www.tiktok.com/@remutarosu1';
+  const profileRes = await fetch(profileUrl, {
     headers: {
       'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
       'Accept-Language': 'ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7'
     }
   });
-  if (!res.ok) throw new Error(`Failed to fetch profile: ${res.status}`);
-  const html = await res.text();
+  if (!profileRes.ok) throw new Error(`Failed to fetch TikTok profile: ${profileRes.status}`);
+  const html = await profileRes.text();
   const match = html.match(/<script\s+id="__UNIVERSAL_DATA_FOR_REHYDRATION__"\s+type="application\/json">([\s\S]*?)<\/script>/);
   if (!match) throw new Error('__UNIVERSAL_DATA_FOR_REHYDRATION__ not found in profile');
   const data = JSON.parse(match[1]);
@@ -176,10 +177,42 @@ async function fetchLiveStatus() {
   const userDetail = scope['webapp.user-detail'] || {};
   const userInfo = userDetail.userInfo || {};
   const user = userInfo.user || {};
-  
+
   const roomId = user.roomId || null;
-  const isLive = Boolean(roomId && roomId !== '0' && roomId !== '');
-  
+  // roomId が存在しない・"0" の場合はライブ中でない
+  if (!roomId || roomId === '0' || roomId === '') {
+    return { isLive: false, roomId: null, title: '', url: '', platform: 'tiktok' };
+  }
+
+  // Step 2: webcast API でルームの実際のライブ状態を確認（status=2 がライブ中）
+  try {
+    const roomUrl = `https://webcast.tiktok.com/webcast/room/info/?aid=1988&app_name=tiktok_web&room_id=${roomId}`;
+    const roomRes = await fetch(roomUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/plain, */*',
+        'Referer': 'https://www.tiktok.com/'
+      }
+    });
+    if (roomRes.ok) {
+      const roomData = await roomRes.json();
+      const roomStatus = roomData?.data?.status; // 2 = ライブ中, 4 = 終了
+      const isLive = roomStatus === 2;
+      const title = roomData?.data?.title || 'れむたろす TikTok配信中';
+      return {
+        isLive,
+        roomId,
+        title: isLive ? title : '',
+        url: isLive ? `https://www.tiktok.com/@remutarosu1/live` : '',
+        platform: 'tiktok'
+      };
+    }
+  } catch (err) {
+    console.error('Webcast room info fetch failed:', err.message);
+  }
+
+  // webcast API が失敗した場合は roomId の有無だけで判断（フォールバック）
+  const isLive = Boolean(roomId && roomId !== '0');
   return {
     isLive,
     roomId,
@@ -188,6 +221,7 @@ async function fetchLiveStatus() {
     platform: 'tiktok'
   };
 }
+
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -357,7 +391,9 @@ export default async function handler(req, res) {
     const result = { live, videos: mergedList, error };
 
     if (fetchedVideos || liveStatus) {
-      await writeCache(CACHE_KEY, result, 900);
+      // ライブ中はキャッシュを短く（60秒）、通常は15分
+      const ttl = (live && live.length > 0) ? 60 : 900;
+      await writeCache(CACHE_KEY, result, ttl);
     }
 
     return res.status(200).json(result);
