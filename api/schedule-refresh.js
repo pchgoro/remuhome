@@ -74,12 +74,14 @@ async function fetchBlueskySchedule() {
     const data = await res.json();
     if (!data.feed || data.feed.length === 0) return null;
 
-    const keywords = ['配信告知', '配信スケジュール', 'schedule', '今週'];
+    // 週間スケジュール投稿のみ抽出（「今週の配信スケジュール」等）
+    // 単発の配信告知（「本日21:00~」等）は除外する
+    const scheduleKeywords = ['配信スケジュール', '今週のスケジュール', 'weekly schedule'];
     const match = data.feed.find(item => {
       const text = item.post?.record?.text || '';
-      const hasKeyword = keywords.some(k => text.toLowerCase().includes(k.toLowerCase()));
+      const hasScheduleKeyword = scheduleKeywords.some(k => text.toLowerCase().includes(k.toLowerCase()));
       const hasImages = item.post?.embed?.images && item.post.embed.images.length > 0;
-      return hasKeyword && hasImages;
+      return hasScheduleKeyword && hasImages;
     });
 
     if (match) {
