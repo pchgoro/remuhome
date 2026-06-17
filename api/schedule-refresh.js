@@ -62,49 +62,158 @@ function verifyCronAuth(req, res) {
   return true;
 }
 
-// Bluesky 取得
-async function fetchBlueskySchedule() {
-  try {
-    const url = 'https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=remutarosu.bsky.social&filter=posts_no_replies&limit=10';
-    const res = await fetch(url);
-    if (!res.ok) {
-      console.error('Bluesky API fetch failed:', res.status, await res.text());
-      return null;
-    }
-    const data = await res.json();
-    if (!data.feed || data.feed.length === 0) return null;
+const BSKY_ACTOR = 'remutarosu.bsky.social';
+const X_USERNAME = 'remutarosu';
 
-    // 週間スケジュール投稿のみ抽出（「今週の配信スケジュール」等）
-    // 単発の配信告知（「本日21:00~」等）は除外する
-    const scheduleKeywords = ['配信スケジュール', '今週のスケジュール', 'weekly schedule'];
-    const match = data.feed.find(item => {
-      const text = item.post?.record?.text || '';
-      const hasScheduleKeyword = scheduleKeywords.some(k => text.toLowerCase().includes(k.toLowerCase()));
-      const hasImages = item.post?.embed?.images && item.post.embed.images.length > 0;
-      return hasScheduleKeyword && hasImages;
-    });
+function formatDateJst(value = new Date()) {
+  return new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(new Date(value));
+}
 
-    if (match) {
-      const post = match.post;
-      const rkey = post.uri.split('/').pop();
-      return {
-        week: post.record.createdAt.substring(0, 10), // "YYYY-MM-DD"
-        source: 'bluesky',
-        text: post.record.text,
-        image: post.embed.images[0].fullsize,
-        postUrl: `https://bsky.app/profile/remutarosu.bsky.social/post/${rkey}`
-      };
-    }
-  } catch (err) {
-    console.error('Bluesky fetch error:', err.message);
+function classifySchedulePost(text, createdAt) {
+  const lower = (text || '').toLowerCase();
+  const weeklyKeywords = ['配信スケジュール', '今週のスケジュール', '週間スケジュール', 'weekly schedule'];
+  const dailyKeywords = ['配信告知', '本日', '今日', '今夜', 'このあと', 'この後', '枠立て', '待機所'];
+  const streamKeywords = ['配信', 'stream', 'live', 'ライブ'];
+  const timePattern = /(?:[01]?\d|2[0-3])[:：時][0-5]?\d?/;
+
+  if (weeklyKeywords.some(k => lower.includes(k.toLowerCase()))) {
+    return 'weekly';
   }
+
+  const isToday = createdAt ? formatDateJst(createdAt) === formatDateJst() : true;
+  const hasDailySignal = dailyKeywords.some(k => lower.includes(k.toLowerCase())) || timePattern.test(text || '');
+  const hasStreamSignal = streamKeywords.some(k => lower.includes(k.toLowerCase()));
+
+  if (isToday && hasDailySignal && hasStreamSignal) {
+    return 'daily';
+  }
+
   return null;
 }
 
-// X (Twitter) 取得（フォールバック）
-async function fetchXSchedule() {
+function extractBlueskyImage(post) {
+  const images = post?.embed?.images;
+  if (Array.isArray(images) && images.length > 0) {
+    return images[0].fullsize || images[0].thumb || null;
+  }
+  return post?.embed?.external?.thumb || null;
+}
+
+// Bluesky 取得
+async function fetchBlueskySchedules() {
   try {
-    const url = 'https://x.com/remutarosu';
+    const url = `https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${encodeURIComponent(BSKY_ACTOR)}&filter=posts_no_replies&limit=25`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.error('Bluesky API fetch failed:', res.status, await res.text());
+      return [];
+    }
+    const data = await res.json();
+    if (!data.feed || data.feed.length === 0) return [];
+
+    return data.feed
+      .map(item => {
+        const post = item.post;
+        const text = post?.record?.text || '';
+        const createdAt = post?.record?.createdAt;
+        const type = classifySchedulePost(text, createdAt);
+        if (!type) return null;
+
+        const rkey = post.uri.split('/').pop();
+        return {
+          week: formatDateJst(createdAt),
+          type,
+          source: 'bluesky',
+          text,
+          image: extractBlueskyImage(post),
+          postUrl: `https://bsky.app/profile/${BSKY_ACTOR}/post/${rkey}`
+        };
+      })
+      .filter(Boolean)
+      .slice(0, 5);
+  } catch (err) {
+    console.error('Bluesky fetch error:', err.message);
+  }
+  return [];
+}
+
+function normalizeXIncludes(includes) {
+  const media = new Map();
+  for (const item of includes?.media || []) {
+    media.set(item.media_key, item.url || item.preview_image_url || null);
+  }
+  return media;
+}
+
+async function fetchXApiSchedules() {
+  const bearerToken = process.env.X_BEARER_TOKEN || process.env.TWITTER_BEARER_TOKEN;
+  if (!bearerToken) return [];
+
+  try {
+    const authHeaders = { Authorization: `Bearer ${bearerToken}` };
+    const userRes = await fetch(`https://api.x.com/2/users/by/username/${encodeURIComponent(X_USERNAME)}`, {
+      headers: authHeaders
+    });
+    if (!userRes.ok) {
+      console.warn(`X API user lookup failed with status ${userRes.status}`);
+      return [];
+    }
+
+    const userData = await userRes.json();
+    const userId = userData?.data?.id;
+    if (!userId) return [];
+
+    const params = new URLSearchParams({
+      max_results: '10',
+      'tweet.fields': 'created_at,attachments',
+      expansions: 'attachments.media_keys',
+      'media.fields': 'url,preview_image_url'
+    });
+    const tweetsRes = await fetch(`https://api.x.com/2/users/${userId}/tweets?${params}`, {
+      headers: authHeaders
+    });
+    if (!tweetsRes.ok) {
+      console.warn(`X API timeline failed with status ${tweetsRes.status}`);
+      return [];
+    }
+
+    const tweetsData = await tweetsRes.json();
+    const media = normalizeXIncludes(tweetsData.includes);
+
+    return (tweetsData.data || [])
+      .map(tweet => {
+        const type = classifySchedulePost(tweet.text, tweet.created_at);
+        if (!type) return null;
+        const mediaKeys = tweet.attachments?.media_keys || [];
+        return {
+          week: formatDateJst(tweet.created_at),
+          type,
+          source: 'x',
+          text: tweet.text,
+          image: mediaKeys.map(key => media.get(key)).find(Boolean) || null,
+          postUrl: `https://x.com/${X_USERNAME}/status/${tweet.id}`
+        };
+      })
+      .filter(Boolean)
+      .slice(0, 5);
+  } catch (err) {
+    console.error('X API fallback error:', err.message);
+    return [];
+  }
+}
+
+// X (Twitter) 取得（フォールバック）
+async function fetchXSchedules() {
+  const apiItems = await fetchXApiSchedules();
+  if (apiItems.length > 0) return apiItems;
+
+  try {
+    const url = `https://x.com/${X_USERNAME}`;
     const res = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -113,7 +222,7 @@ async function fetchXSchedule() {
     });
     if (!res.ok) {
       console.warn(`X fetch failed with status ${res.status}`);
-      return null;
+      return [];
     }
     const html = await res.text();
     
@@ -124,32 +233,32 @@ async function fetchXSchedule() {
 
     const image = ogImageMatch ? ogImageMatch[1] : null;
     const text = ogDescMatch ? ogDescMatch[1] : '';
-    const postUrl = ogUrlMatch ? ogUrlMatch[1] : 'https://x.com/remutarosu';
+    const postUrl = ogUrlMatch ? ogUrlMatch[1] : `https://x.com/${X_USERNAME}`;
 
-    // スケジュール画像っぽい条件
-    const keywords = ['配信告知', '配信スケジュール', 'schedule', '今週'];
-    const hasKeyword = keywords.some(k => text.toLowerCase().includes(k.toLowerCase()));
+    const type = classifySchedulePost(text);
 
-    if (hasKeyword && image) {
-      return {
-        week: new Date().toISOString().substring(0, 10),
+    if (type) {
+      return [{
+        week: formatDateJst(),
+        type,
         source: 'x',
         text: text,
         image: image,
         postUrl: postUrl
-      };
+      }];
     }
   } catch (err) {
     console.error('X scrape fallback error:', err.message);
   }
-  return null;
+  return [];
 }
 
-// 履歴リストの先頭に新要素を追加し、重複postUrlを除外、最大5件に切り取る
-function updateHistory(existing, newItem) {
+// 履歴リストの先頭に新要素を追加し、重複postUrlを除外、最大8件に切り取る
+function updateHistory(existing, newItems) {
   const list = Array.isArray(existing) ? existing : [];
+  const items = Array.isArray(newItems) ? newItems : [newItems];
   // 重複を除去しながらマージ
-  const merged = [newItem, ...list];
+  const merged = [...items, ...list];
   const unique = [];
   const seen = new Set();
   for (const item of merged) {
@@ -159,7 +268,20 @@ function updateHistory(existing, newItem) {
       unique.push(item);
     }
   }
-  return unique.slice(0, 5);
+  return unique.slice(0, 8);
+}
+
+function mergeMissingScheduleTypes(primary, fallback) {
+  const merged = [...primary];
+  const hasType = type => merged.some(item => item.type === type);
+
+  for (const item of fallback) {
+    if ((item.type === 'weekly' || item.type === 'daily') && !hasType(item.type)) {
+      merged.push(item);
+    }
+  }
+
+  return merged;
 }
 
 export default async function handler(req, res) {
@@ -186,7 +308,8 @@ export default async function handler(req, res) {
         }
 
         const newSchedule = {
-          week: week || new Date().toISOString().substring(0, 10),
+          week: week || formatDateJst(),
+          type: 'manual',
           source: 'manual',
           text: text || '手動登録された配信スケジュール',
           image: image,
@@ -232,25 +355,27 @@ export default async function handler(req, res) {
 
     try {
       // 1. Bluesky から取得
-      let schedule = await fetchBlueskySchedule();
+      let schedules = await fetchBlueskySchedules();
       let source = 'bluesky';
 
-      // 2. 失敗した場合、X (Twitter) から取得試行
-      if (!schedule) {
-        console.log('Bluesky fetch failed or returned no schedule. Trying X fallback...');
-        schedule = await fetchXSchedule();
-        source = 'x';
+      // 2. 失敗または不足がある場合、X (Twitter) から取得試行
+      const needsFallback = schedules.length === 0 || !schedules.some(item => item.type === 'weekly') || !schedules.some(item => item.type === 'daily');
+      if (needsFallback) {
+        console.log('Bluesky returned no schedule or missed one notice type. Trying X fallback...');
+        const xSchedules = await fetchXSchedules();
+        schedules = schedules.length > 0 ? mergeMissingScheduleTypes(schedules, xSchedules) : xSchedules;
+        source = schedules.some(item => item.source === 'bluesky') && schedules.some(item => item.source === 'x') ? 'bluesky+x' : schedules[0]?.source || source;
       }
 
-      if (schedule) {
+      if (schedules.length > 0) {
         // Redis の履歴を更新
         const existingRaw = await readCache('schedule_history') || [];
-        const updated = updateHistory(existingRaw, schedule);
+        const updated = updateHistory(existingRaw, schedules);
         await writeCacheNoTtl('schedule_history', updated);
 
-        return res.status(200).json({ status: 'updated', source, schedule });
+        return res.status(200).json({ status: 'updated', source, schedules });
       } else {
-        return res.status(200).json({ status: 'no_new_schedule', message: 'No schedule posts found on Bluesky or X' });
+        return res.status(200).json({ status: 'no_new_schedule', message: 'No schedule or daily notice posts found on Bluesky or X' });
       }
     } catch (err) {
       console.error('Schedule-refresh GET error:', err.message);

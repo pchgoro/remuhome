@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>たろみんサポートアプリ β版</title>
+  <title>たろみんサポートアプリ</title>
   <link rel="manifest" href="/manifest.json">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -534,6 +534,14 @@
       padding: 3px 8px;
       border-radius: 6px;
     }
+    .schedule-kind {
+      font-weight: 700;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.08);
+      padding: 3px 8px;
+      border-radius: 6px;
+      margin-left: 6px;
+    }
     .schedule-source {
       text-transform: uppercase;
       font-weight: 600;
@@ -561,6 +569,15 @@
     }
     .schedule-image-container:hover .schedule-image {
       transform: scale(1.02);
+    }
+    .schedule-no-image {
+      border: 1px dashed rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      padding: 14px;
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.03);
     }
     .schedule-footer {
       display: flex;
@@ -593,7 +610,7 @@
   <div class="logo">
     <span class="logo-icon">🐈⚡</span>
     <span class="logo-text">たろみんサポートアプリ</span>
-    <span class="beta-badge">β版</span>
+  <!--     <span class="beta-badge">β版</span> -->
   </div>
 </header>
 
@@ -653,7 +670,7 @@
 
   <!-- 配信予定ビュー -->
   <div id="scheduleView" style="display: none; animation: fadeIn 0.3s ease-out;">
-    <div class="section-title">📅 今週の配信予定</div>
+    <div class="section-title">📅 配信予定・告知</div>
     <div id="scheduleContainer">
       <div class="loading">読み込み中...</div>
     </div>
@@ -919,8 +936,10 @@
 
     <div class="settings-card">
       <h3>ℹ️ アプリ情報</h3>
-      <p style="margin-bottom: 6px; font-weight: 600;">たろみんサポートアプリ β版</p>
-      <p style="color: var(--muted); font-size: 12px;">バージョン: 1.1.0 (PWA対応)</p>
+      <p style="margin-bottom: 6px; font-weight: 600;">たろみんサポートアプリ</p>
+      <p style="color: var(--muted); font-size: 12px;">バージョン: 0.1.0 (PWA対応)</p>
+      <p style="color: var(--muted); font-size: 12px;">バージョン: 0.2.0 (tiktok対応)</p>
+      <p style="color: var(--muted); font-size: 12px;">バージョン: 1.0.0 (正式リリース)</p>
     </div>
 
     <footer style="position:relative;z-index:1;max-width:900px;margin:32px auto 0;padding:12px 16px 20px;text-align:center;font-size:11px;color:#4a4a6a;line-height:1.8;">
@@ -1298,27 +1317,40 @@
         
         const sourceNames = { bluesky: 'Bluesky', x: 'X', manual: '手動登録' };
         const sourceName = sourceNames[item.source] || item.source;
+        const typeNames = { weekly: '週間スケジュール', daily: '当日の配信告知', manual: '手動登録' };
+        const itemType = item.type || (item.source === 'manual' ? 'manual' : 'weekly');
+        const typeName = typeNames[itemType] || '配信予定';
+        const imageUrl = item.image ? escapeHTML(item.image) : '';
+        const postUrl = escapeHTML(item.postUrl || '#');
+        const imageHtml = item.image ? `
+          <div class="schedule-image-container">
+            <img class="schedule-image" src="${imageUrl}" alt="${escapeHTML(typeName)}" loading="lazy">
+          </div>
+        ` : '<div class="schedule-no-image">画像なしの告知です</div>';
         
         card.innerHTML = `
           <div class="schedule-header">
-            <span class="schedule-week">📅 ${item.week} の予定</span>
+            <div>
+              <span class="schedule-week">📅 ${item.week}</span>
+              <span class="schedule-kind">${typeName}</span>
+            </div>
             <span class="schedule-source">投稿元: ${sourceName}</span>
           </div>
           ${item.text ? `<div class="schedule-text">${escapeHTML(item.text)}</div>` : ''}
-          <div class="schedule-image-container">
-            <img class="schedule-image" src="${item.image}" alt="配信スケジュール" loading="lazy">
-          </div>
+          ${imageHtml}
           <div class="schedule-footer">
-            <a href="${item.postUrl}" target="_blank" rel="noopener" class="schedule-link">
+            <a href="${postUrl}" target="_blank" rel="noopener" class="schedule-link">
               <span>投稿を見る</span> ↗
             </a>
           </div>
         `;
         
         const img = card.querySelector('.schedule-image');
-        img.addEventListener('click', () => {
-          showLightbox(item.image);
-        });
+        if (img) {
+          img.addEventListener('click', () => {
+            showLightbox(item.image);
+          });
+        }
         
         container.appendChild(card);
       });
