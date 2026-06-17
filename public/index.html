@@ -921,6 +921,7 @@
         <input type="text" id="manualSchedPostUrl" placeholder="投稿のURL (https://...)" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: var(--text); font-family: inherit; font-size: 13px;">
         <input type="text" id="manualSchedText" placeholder="本文 (例: 今週の配信スケジュールです！)" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: var(--text); font-family: inherit; font-size: 13px;">
         <input type="text" id="manualSchedWeek" placeholder="対象週 (YYYY-MM-DD、空欄なら今日の日付)" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: var(--text); font-family: inherit; font-size: 13px;">
+        <input type="password" id="manualSchedAdminPassword" placeholder="管理者パスワード (CRON_SECRET)" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: var(--text); font-family: inherit; font-size: 13px;">
         <button id="addManualSchedBtn" class="save-pref-btn" style="margin-top: 4px;">配信予定を追加する</button>
       </div>
       
@@ -1649,8 +1650,23 @@
   }
 
   // --- TikTok & Schedule Manual Override Management ---
+  function getAdminPassword() {
+    const videoPassword = document.getElementById('manualAdminPassword')?.value.trim() || '';
+    const schedulePassword = document.getElementById('manualSchedAdminPassword')?.value.trim() || '';
+    return schedulePassword || videoPassword || localStorage.getItem('admin_pass') || '';
+  }
+
+  function setAdminPassword(password) {
+    if (!password) return;
+    const videoPasswordInput = document.getElementById('manualAdminPassword');
+    const schedulePasswordInput = document.getElementById('manualSchedAdminPassword');
+    if (videoPasswordInput) videoPasswordInput.value = password;
+    if (schedulePasswordInput) schedulePasswordInput.value = password;
+    localStorage.setItem('admin_pass', password);
+  }
+
   async function loadManualVideosList() {
-    const password = document.getElementById('manualAdminPassword').value || localStorage.getItem('admin_pass') || '';
+    const password = getAdminPassword();
     const listEl = document.getElementById('manualVideosList');
     
     if (!password) {
@@ -1666,7 +1682,7 @@
       });
       
       if (res.ok) {
-        localStorage.setItem('admin_pass', password);
+        setAdminPassword(password);
         const data = await res.json();
         const list = data.videos || [];
         if (list.length === 0) {
@@ -1736,7 +1752,7 @@
   }
 
   async function loadManualSchedList() {
-    const password = document.getElementById('manualAdminPassword').value || localStorage.getItem('admin_pass') || '';
+    const password = getAdminPassword();
     const listEl = document.getElementById('manualSchedList');
     
     if (!password) {
@@ -1752,7 +1768,7 @@
       });
       
       if (res.ok) {
-        localStorage.setItem('admin_pass', password);
+        setAdminPassword(password);
         const data = await res.json();
         const list = data.schedules || [];
         if (list.length === 0) {
@@ -1824,13 +1840,20 @@
   // Pre-fill saved admin password if exists
   const storedPass = localStorage.getItem('admin_pass');
   if (storedPass) {
-    document.getElementById('manualAdminPassword').value = storedPass;
+    setAdminPassword(storedPass);
     loadManualVideosList();
     loadManualSchedList();
   }
 
   // Reload list on password input focusout/change
   document.getElementById('manualAdminPassword').addEventListener('change', () => {
+    setAdminPassword(document.getElementById('manualAdminPassword').value.trim());
+    loadManualVideosList();
+    loadManualSchedList();
+  });
+
+  document.getElementById('manualSchedAdminPassword').addEventListener('change', () => {
+    setAdminPassword(document.getElementById('manualSchedAdminPassword').value.trim());
     loadManualVideosList();
     loadManualSchedList();
   });
@@ -1839,13 +1862,12 @@
   const addBtn = document.getElementById('addManualVideoBtn');
   const addUrlInput = document.getElementById('manualVideoUrl');
   const addTitleInput = document.getElementById('manualVideoTitle');
-  const addPassInput = document.getElementById('manualAdminPassword');
   const adminStatusMsg = document.getElementById('manualAdminStatusMsg');
 
   addBtn.addEventListener('click', async () => {
     const url = addUrlInput.value.trim();
     const title = addTitleInput.value.trim();
-    const password = addPassInput.value.trim();
+    const password = getAdminPassword();
 
     if (!url || !password) {
       adminStatusMsg.textContent = 'URLとパスワードは必須項目です。';
@@ -1863,6 +1885,7 @@
       });
 
       if (res.ok) {
+        setAdminPassword(password);
         addUrlInput.value = '';
         addTitleInput.value = '';
         adminStatusMsg.textContent = '手動動画を追加しました！';
@@ -1893,7 +1916,7 @@
     const postUrl = addSchedPostUrl.value.trim();
     const text = addSchedText.value.trim();
     const week = addSchedWeek.value.trim();
-    const password = document.getElementById('manualAdminPassword').value.trim();
+    const password = getAdminPassword();
 
     if (!image || !postUrl || !password) {
       schedAdminStatusMsg.textContent = '画像URL、投稿URL、およびパスワードは必須項目です。';
@@ -1911,6 +1934,7 @@
       });
 
       if (res.ok) {
+        setAdminPassword(password);
         addSchedImage.value = '';
         addSchedPostUrl.value = '';
         addSchedText.value = '';
