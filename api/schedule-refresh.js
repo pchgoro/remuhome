@@ -85,11 +85,10 @@ function classifySchedulePost(text, createdAt) {
     return 'weekly';
   }
 
-  const isToday = createdAt ? formatDateJst(createdAt) === formatDateJst() : true;
   const hasDailySignal = dailyKeywords.some(k => lower.includes(k.toLowerCase())) || timePattern.test(text || '');
   const hasStreamSignal = streamKeywords.some(k => lower.includes(k.toLowerCase()));
 
-  if (isToday && hasDailySignal && hasStreamSignal) {
+  if (hasDailySignal && hasStreamSignal) {
     return 'daily';
   }
 
