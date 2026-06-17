@@ -33,6 +33,26 @@ function formatDateJst(value = new Date()) {
   }).format(new Date(value));
 }
 
+function dateKeyToUtcDate(dateKey) {
+  const [year, month, day] = String(dateKey || '').split('-').map(Number);
+  if (!year || !month || !day) return null;
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function getWeekStartDateKey(dateKey = formatDateJst()) {
+  const date = dateKeyToUtcDate(dateKey);
+  if (!date) return null;
+
+  const day = date.getUTCDay();
+  const diffToMonday = (day + 6) % 7;
+  date.setUTCDate(date.getUTCDate() - diffToMonday);
+  return date.toISOString().substring(0, 10);
+}
+
+function isCurrentWeek(dateKey) {
+  return getWeekStartDateKey(dateKey) === getWeekStartDateKey();
+}
+
 function classifySchedulePost(text) {
   const lower = (text || '').toLowerCase();
   const weeklyKeywords = ['配信スケジュール', '今週のスケジュール', '週間スケジュール', 'weekly schedule'];
@@ -58,6 +78,28 @@ function extractBlueskyImage(post) {
   return post?.embed?.external?.thumb || null;
 }
 
+function selectScheduleItems(items, limit = 5) {
+  const selected = [];
+  const seen = new Set();
+
+  for (const type of ['daily', 'weekly']) {
+    const item = items.find(entry => entry.type === type);
+    if (item?.postUrl && !seen.has(item.postUrl)) {
+      seen.add(item.postUrl);
+      selected.push(item);
+    }
+  }
+
+  for (const item of items) {
+    if (!item?.postUrl || seen.has(item.postUrl)) continue;
+    seen.add(item.postUrl);
+    selected.push(item);
+    if (selected.length >= limit) break;
+  }
+
+  return selected;
+}
+
 async function fetchBlueskySchedules() {
   try {
     const url = `https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${encodeURIComponent(BSKY_ACTOR)}&filter=posts_no_replies&limit=25`;
@@ -67,7 +109,7 @@ async function fetchBlueskySchedules() {
     const data = await res.json();
     if (!Array.isArray(data.feed)) return [];
 
-    return data.feed
+    const schedules = data.feed
       .map(item => {
         const post = item.post;
         const text = post?.record?.text || '';
@@ -86,7 +128,7 @@ async function fetchBlueskySchedules() {
         };
       })
       .filter(Boolean)
-      .slice(0, 5);
+    return selectScheduleItems(schedules, 5);
   } catch (err) {
     console.log('Live Bluesky schedule fetch skipped:', err.message);
     return [];
@@ -99,6 +141,7 @@ function mergeSchedules(primary, fallback) {
 
   for (const item of [...primary, ...fallback]) {
     if (!item?.postUrl || seen.has(item.postUrl)) continue;
+    if (item.type === 'weekly' && !isCurrentWeek(item.week)) continue;
     seen.add(item.postUrl);
     unique.push(item);
   }

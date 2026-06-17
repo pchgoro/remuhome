@@ -74,6 +74,26 @@ function formatDateJst(value = new Date()) {
   }).format(new Date(value));
 }
 
+function dateKeyToUtcDate(dateKey) {
+  const [year, month, day] = String(dateKey || '').split('-').map(Number);
+  if (!year || !month || !day) return null;
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function getWeekStartDateKey(dateKey = formatDateJst()) {
+  const date = dateKeyToUtcDate(dateKey);
+  if (!date) return null;
+
+  const day = date.getUTCDay();
+  const diffToMonday = (day + 6) % 7;
+  date.setUTCDate(date.getUTCDate() - diffToMonday);
+  return date.toISOString().substring(0, 10);
+}
+
+function isCurrentWeek(dateKey) {
+  return getWeekStartDateKey(dateKey) === getWeekStartDateKey();
+}
+
 function classifySchedulePost(text, createdAt) {
   const lower = (text || '').toLowerCase();
   const weeklyKeywords = ['配信スケジュール', '今週のスケジュール', '週間スケジュール', 'weekly schedule'];
@@ -81,7 +101,7 @@ function classifySchedulePost(text, createdAt) {
   const streamKeywords = ['配信', 'stream', 'live', 'ライブ'];
   const timePattern = /(?:[01]?\d|2[0-3])[:：時][0-5]?\d?/;
 
-  if (weeklyKeywords.some(k => lower.includes(k.toLowerCase()))) {
+  if (weeklyKeywords.some(k => lower.includes(k.toLowerCase())) && isCurrentWeek(formatDateJst(createdAt))) {
     return 'weekly';
   }
 
@@ -103,6 +123,28 @@ function extractBlueskyImage(post) {
   return post?.embed?.external?.thumb || null;
 }
 
+function selectScheduleItems(items, limit = 5) {
+  const selected = [];
+  const seen = new Set();
+
+  for (const type of ['daily', 'weekly']) {
+    const item = items.find(entry => entry.type === type);
+    if (item?.postUrl && !seen.has(item.postUrl)) {
+      seen.add(item.postUrl);
+      selected.push(item);
+    }
+  }
+
+  for (const item of items) {
+    if (!item?.postUrl || seen.has(item.postUrl)) continue;
+    seen.add(item.postUrl);
+    selected.push(item);
+    if (selected.length >= limit) break;
+  }
+
+  return selected;
+}
+
 // Bluesky 取得
 async function fetchBlueskySchedules() {
   try {
@@ -115,7 +157,7 @@ async function fetchBlueskySchedules() {
     const data = await res.json();
     if (!data.feed || data.feed.length === 0) return [];
 
-    return data.feed
+    const schedules = data.feed
       .map(item => {
         const post = item.post;
         const text = post?.record?.text || '';
@@ -134,7 +176,7 @@ async function fetchBlueskySchedules() {
         };
       })
       .filter(Boolean)
-      .slice(0, 5);
+    return selectScheduleItems(schedules, 5);
   } catch (err) {
     console.error('Bluesky fetch error:', err.message);
   }
@@ -262,6 +304,7 @@ function updateHistory(existing, newItems) {
   const seen = new Set();
   for (const item of merged) {
     if (!item.postUrl) continue;
+    if (item.type === 'weekly' && !isCurrentWeek(item.week)) continue;
     if (!seen.has(item.postUrl)) {
       seen.add(item.postUrl);
       unique.push(item);
